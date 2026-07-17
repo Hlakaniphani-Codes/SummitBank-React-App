@@ -1,0 +1,47 @@
+
+--- vexp daemon start at 2026-07-17T10:41:26.144Z ---
+[2m2026-07-17T10:41:26.217189Z[0m [32m INFO[0m license: home_dir=C:\Users\nokup (source=os)
+[2m2026-07-17T10:41:26.219880Z[0m [33m WARN[0m license: no valid JWT found, falling back to FREE plan (2000 nodes / 1 repo / 20 daily calls)
+[2m2026-07-17T10:41:26.234574Z[0m [32m INFO[0m Opening database at C:\Users\nokup\OneDrive\Desktop\SummitFinTech\.vexp\index.db
+[2m2026-07-17T10:41:26.351332Z[0m [32m INFO[0m SecurityFilter active — skipping built-in secret paths
+[2m2026-07-17T10:41:26.354624Z[0m [32m INFO[0m No manifest, running full index
+[2m2026-07-17T10:41:26.358733Z[0m [32m INFO[0m Starting full index of C:\Users\nokup\OneDrive\Desktop\SummitFinTech
+[2m2026-07-17T10:41:29.472079Z[0m [32m INFO[0m Found 31 source files to index
+[2m2026-07-17T10:41:30.730243Z[0m [32m INFO[0m CallResolver: scanning 31 callable nodes (0 LSP edges pre-integrated)
+[2m2026-07-17T10:41:30.741490Z[0m [32m INFO[0m CallResolver: created 12 CALLS edges
+[2m2026-07-17T10:41:30.743337Z[0m [32m INFO[0m Context lineage: 0 files enriched
+[2m2026-07-17T10:41:30.743396Z[0m [32m INFO[0m Change coupling: 0 edges stored
+[2m2026-07-17T10:41:30.808749Z[0m [32m INFO[0m TF-IDF corpus: 59 documents, 515 unique terms
+[2m2026-07-17T10:41:30.814495Z[0m [32m INFO[0m TF-IDF embeddings: 59 vectors stored
+[2m2026-07-17T10:41:32.110411Z[0m [32m INFO[0m Manifest written: 31 file hashes
+[2m2026-07-17T10:41:32.118900Z[0m [32m INFO[0m Full index complete: 31 files, 65 nodes, 31 edges in 4456ms
+[2m2026-07-17T10:41:32.135617Z[0m [32m INFO[0m File watcher: monitorando C:\Users\nokup\OneDrive\Desktop\SummitFinTech (16 directories)
+[2m2026-07-17T10:41:32.137200Z[0m [32m INFO[0m LLM compression not configured — rule compressor active
+[2m2026-07-17T10:41:32.137596Z[0m [32m INFO[0m vexp-core daemon started, watching for changes
+
+--- vexp daemon start at 2026-07-17T14:38:41.116Z ---
+[2m2026-07-17T14:38:41.401575Z[0m [32m INFO[0m license: home_dir=C:\Users\nokup (source=os)
+[2m2026-07-17T14:38:41.401762Z[0m [33m WARN[0m license: no valid JWT found, falling back to FREE plan (2000 nodes / 1 repo / 20 daily calls)
+[2m2026-07-17T14:38:41.430603Z[0m [32m INFO[0m Opening database at C:\Users\nokup\OneDrive\Desktop\SummitFinTech\.vexp\index.db
+[2m2026-07-17T14:38:41.486941Z[0m [32m INFO[0m SecurityFilter active — skipping built-in secret paths
+[2m2026-07-17T14:38:41.510707Z[0m [32m INFO[0m Manifest found, running incremental sync
+[2m2026-07-17T14:38:41.512248Z[0m [32m INFO[0m Running checkout sync
+[mcp] singleton already running (pidfile match)
+[2m2026-07-17T14:38:42.422594Z[0m [32m INFO[0m File watcher: monitorando C:\Users\nokup\OneDrive\Desktop\SummitFinTech (17 directories)
+[2m2026-07-17T14:38:42.422901Z[0m [32m INFO[0m LLM compression not configured — rule compressor active
+[2m2026-07-17T14:38:42.422922Z[0m [32m INFO[0m vexp-core daemon started, watching for changes
+[2m2026-07-17T14:38:48.764541Z[0m [32m INFO[0m Received 10 LSP edges from extension
+[2m2026-07-17T14:43:35.673179Z[0m [32m INFO[0m Received 6 LSP edges from extension
+[2m2026-07-17T14:44:43.993515Z[0m [32m INFO[0m Received 5 LSP edges from extension
+[2m2026-07-17T14:47:47.454172Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-17T14:47:49.517078Z[0m [32m INFO[0m Received 1 LSP edges from extension
+[2m2026-07-17T14:48:27.439104Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-17T14:48:28.769331Z[0m [32m INFO[0m Received 3 LSP edges from extension
+[2m2026-07-17T14:50:23.474361Z[0m [32m INFO[0m Received 3 LSP edges from extension
+[2m2026-07-17T14:50:27.437960Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-17T14:50:45.988784Z[0m [32m INFO[0m Received 1 LSP edges from extension
+[2m2026-07-17T14:50:58.994746Z[0m [32m INFO[0m Received 1 LSP edges from extension
+[2m2026-07-17T14:51:21.211308Z[0m [32m INFO[0m Received 1 LSP edges from extension
+[2m2026-07-17T14:53:53.727349Z[0m [32m INFO[0m Received 6 LSP edges from extension
+[2m2026-07-17T14:54:36.667120Z[0m [32m INFO[0m Received 6 LSP edges from extension
+[2m2026-07-17T14:59:15.435439Z[0m [32m INFO[0m Received 5 LSP edges from extension

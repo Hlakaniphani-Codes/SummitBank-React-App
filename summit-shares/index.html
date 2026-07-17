@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Summit Shares – Global Digital Finance</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CDN – MUST be before the config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Tailwind Config – defines brand-* colours -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                dark: '#0B0B0B',
+                charcoal: '#1A1A1A',
+                gold: '#C9A84C',
+                goldLight: '#D9C06E',
+                goldDim: '#A8893A',
+                goldPale: '#F5EDD6',
+                slateText: '#5A5A5A',
+                border: '#E8E2D9'
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'Montserrat', 'system-ui', 'sans-serif'],
+              display: ['Montserrat', 'system-ui', 'sans-serif']
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
