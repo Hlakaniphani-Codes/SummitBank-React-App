@@ -1,4 +1,4 @@
-const { listDocuments, generateStatement } = require('../utils/mysqlStore');
+const { listDocuments, generateStatement } = require('../utils/postgresStore');
 
 exports.getDocuments = async (req, res) => {
   const userId = req.userId;
@@ -27,3 +27,4 @@ exports.generateStatement = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+

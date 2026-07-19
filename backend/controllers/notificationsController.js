@@ -1,4 +1,4 @@
-const { listNotifications, markNotificationRead } = require('../utils/mysqlStore');
+const { listNotifications, markNotificationRead } = require('../utils/postgresStore');
 
 exports.getNotifications = async (req, res) => {
   const userId = req.userId;
@@ -23,3 +23,4 @@ exports.markRead = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+

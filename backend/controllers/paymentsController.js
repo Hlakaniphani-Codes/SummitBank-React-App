@@ -6,7 +6,7 @@ const {
   payBill,
   listDocuments,
   generateStatement,
-} = require('../utils/mysqlStore');
+} = require('../utils/postgresStore');
 
 exports.getPayees = async (req, res) => {
   const userId = req.userId;
@@ -62,16 +62,16 @@ exports.postBill = async (req, res) => {
   }
 };
 
-// FIXED: billId comes from req.params, fromAccountId from req.body
 exports.payBill = async (req, res) => {
   const userId = req.userId;
-  const billId = req.params.billId;                     // <-- from URL
+  const billId = req.params.billId;
   const { payeeId, amount, description, paymentDate, fromAccountId } = req.body;
 
   try {
     if (!billId || !amount) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
+
     const payment = await payBill(userId, {
       billId,
       payeeId,
@@ -80,6 +80,7 @@ exports.payBill = async (req, res) => {
       paymentDate,
       fromAccountId,
     });
+
     return res.status(201).json({ success: true, payment, message: 'Bill paid' });
   } catch (error) {
     console.error('Pay bill error:', error);
@@ -90,6 +91,7 @@ exports.payBill = async (req, res) => {
 exports.getDocuments = async (req, res) => {
   const userId = req.userId;
   const { docType } = req.query;
+
   try {
     const documents = await listDocuments(userId, docType);
     return res.json({ success: true, documents });
@@ -102,9 +104,11 @@ exports.getDocuments = async (req, res) => {
 exports.generateStatement = async (req, res) => {
   const userId = req.userId;
   const { accountId, periodStart, periodEnd } = req.body;
+
   if (!accountId || !periodStart || !periodEnd) {
     return res.status(400).json({ success: false, message: 'Missing required fields' });
   }
+
   try {
     const doc = await generateStatement(userId, accountId, periodStart, periodEnd);
     return res.status(201).json({ success: true, document: doc });
@@ -113,3 +117,4 @@ exports.generateStatement = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+

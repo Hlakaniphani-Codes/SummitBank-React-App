@@ -1,4 +1,7 @@
-const { listSessions, signOutSession } = require('../utils/mysqlStore');
+const {
+  listSessions,
+  signOutSession,
+} = require('../utils/postgresStore');
 
 exports.getSessions = async (req, res) => {
   const userId = req.userId;
@@ -11,15 +14,15 @@ exports.getSessions = async (req, res) => {
   }
 };
 
-exports.postSignOutSession = async (req, res) => {
+exports.signOut = async (req, res) => {
   const userId = req.userId;
   const { sessionId } = req.params;
 
   try {
     await signOutSession(userId, sessionId);
-    return res.json({ success: true, message: 'Device signed out' });
+    return res.json({ success: true, message: 'Signed out' });
   } catch (error) {
-    console.error('Sign out session error:', error);
+    console.error('Sign out error:', error);
     return res.status(400).json({ success: false, message: error.message || 'Failed to sign out' });
   }
 };

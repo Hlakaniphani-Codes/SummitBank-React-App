@@ -156,7 +156,10 @@ exports.forgotPassword = async (req, res) => {
     await pool.query(
       `INSERT INTO password_resets (user_id, token, expires_at)
        VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE token = VALUES(token), expires_at = VALUES(expires_at)`,
+       ON CONFLICT (token) DO UPDATE SET
+         user_id = EXCLUDED.user_id,
+         token = EXCLUDED.token,
+         expires_at = EXCLUDED.expires_at`,
       [user.id, resetToken, expiresAt]
     );
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;

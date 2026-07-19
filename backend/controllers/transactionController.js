@@ -1,4 +1,4 @@
-const { getTransactions, transferMoney } = require('../utils/mysqlStore');
+const { getTransactions, transferMoney } = require('../utils/postgresStore');
 
 exports.getTransactions = async (req, res) => {
   const userId = req.userId;

@@ -1,4 +1,4 @@
-const { getDashboardData } = require('../utils/mysqlStore');
+const { getDashboardData } = require('../utils/postgresStore');
 
 exports.getDashboard = async (req, res) => {
   const userId = req.userId;

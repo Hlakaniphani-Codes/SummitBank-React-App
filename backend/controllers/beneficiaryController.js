@@ -1,4 +1,8 @@
-const { listBeneficiaries, addBeneficiary, removeBeneficiary } = require('../utils/mysqlStore');
+const {
+  listBeneficiaries,
+  addBeneficiary,
+  removeBeneficiary,
+} = require('../utils/postgresStore');
 
 exports.getBeneficiaries = async (req, res) => {
   const userId = req.userId;

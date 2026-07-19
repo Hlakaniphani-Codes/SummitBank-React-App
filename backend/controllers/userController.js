@@ -2,7 +2,7 @@ const {
   getUserProfile,
   updateUserProfile,
   changePassword,
-} = require('../utils/mysqlStore');
+} = require('../utils/postgresStore');
 
 exports.getProfile = async (req, res) => {
   const userId = req.userId;
@@ -42,3 +42,4 @@ exports.changePassword = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+

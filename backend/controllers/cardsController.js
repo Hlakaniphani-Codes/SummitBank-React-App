@@ -2,7 +2,7 @@ const {
   getCardDetails,
   setCardStatus,
   requestCard,
-} = require('../utils/mysqlStore');
+} = require('../utils/postgresStore');
 
 exports.viewCard = async (req, res) => {
   const userId = req.userId;
@@ -59,3 +59,4 @@ exports.requestNewCard = async (req, res) => {
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+
