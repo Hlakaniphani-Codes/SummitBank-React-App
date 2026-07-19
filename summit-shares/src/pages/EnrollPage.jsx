@@ -1,5 +1,252 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { register } from '../api'; // <-- IMPORT
+import { register } from '../api';
+
+// ----- US States (full list) -----
+const US_STATES = [
+  { value: 'AL', label: 'Alabama' },
+  { value: 'AK', label: 'Alaska' },
+  { value: 'AZ', label: 'Arizona' },
+  { value: 'AR', label: 'Arkansas' },
+  { value: 'CA', label: 'California' },
+  { value: 'CO', label: 'Colorado' },
+  { value: 'CT', label: 'Connecticut' },
+  { value: 'DE', label: 'Delaware' },
+  { value: 'DC', label: 'District of Columbia' },
+  { value: 'FL', label: 'Florida' },
+  { value: 'GA', label: 'Georgia' },
+  { value: 'HI', label: 'Hawaii' },
+  { value: 'ID', label: 'Idaho' },
+  { value: 'IL', label: 'Illinois' },
+  { value: 'IN', label: 'Indiana' },
+  { value: 'IA', label: 'Iowa' },
+  { value: 'KS', label: 'Kansas' },
+  { value: 'KY', label: 'Kentucky' },
+  { value: 'LA', label: 'Louisiana' },
+  { value: 'ME', label: 'Maine' },
+  { value: 'MD', label: 'Maryland' },
+  { value: 'MA', label: 'Massachusetts' },
+  { value: 'MI', label: 'Michigan' },
+  { value: 'MN', label: 'Minnesota' },
+  { value: 'MS', label: 'Mississippi' },
+  { value: 'MO', label: 'Missouri' },
+  { value: 'MT', label: 'Montana' },
+  { value: 'NE', label: 'Nebraska' },
+  { value: 'NV', label: 'Nevada' },
+  { value: 'NH', label: 'New Hampshire' },
+  { value: 'NJ', label: 'New Jersey' },
+  { value: 'NM', label: 'New Mexico' },
+  { value: 'NY', label: 'New York' },
+  { value: 'NC', label: 'North Carolina' },
+  { value: 'ND', label: 'North Dakota' },
+  { value: 'OH', label: 'Ohio' },
+  { value: 'OK', label: 'Oklahoma' },
+  { value: 'OR', label: 'Oregon' },
+  { value: 'PA', label: 'Pennsylvania' },
+  { value: 'RI', label: 'Rhode Island' },
+  { value: 'SC', label: 'South Carolina' },
+  { value: 'SD', label: 'South Dakota' },
+  { value: 'TN', label: 'Tennessee' },
+  { value: 'TX', label: 'Texas' },
+  { value: 'UT', label: 'Utah' },
+  { value: 'VT', label: 'Vermont' },
+  { value: 'VA', label: 'Virginia' },
+  { value: 'WA', label: 'Washington' },
+  { value: 'WV', label: 'West Virginia' },
+  { value: 'WI', label: 'Wisconsin' },
+  { value: 'WY', label: 'Wyoming' }
+];
+
+// ----- Countries (plain text, no emojis, US first) -----
+const COUNTRIES = [
+  { value: 'US', label: 'United States' },
+  { value: 'GB', label: 'United Kingdom' },
+  { value: 'CA', label: 'Canada' },
+  { value: 'AU', label: 'Australia' },
+  { value: 'ZA', label: 'South Africa' },
+  { value: 'NG', label: 'Nigeria' },
+  { value: 'KE', label: 'Kenya' },
+  { value: 'IN', label: 'India' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'FR', label: 'France' },
+  { value: 'AE', label: 'United Arab Emirates' },
+  { value: 'SG', label: 'Singapore' },
+  { value: 'AL', label: 'Albania' },
+  { value: 'DZ', label: 'Algeria' },
+  { value: 'AR', label: 'Argentina' },
+  { value: 'AM', label: 'Armenia' },
+  { value: 'AT', label: 'Austria' },
+  { value: 'AZ', label: 'Azerbaijan' },
+  { value: 'BS', label: 'Bahamas' },
+  { value: 'BH', label: 'Bahrain' },
+  { value: 'BB', label: 'Barbados' },
+  { value: 'BY', label: 'Belarus' },
+  { value: 'BE', label: 'Belgium' },
+  { value: 'BZ', label: 'Belize' },
+  { value: 'BJ', label: 'Benin' },
+  { value: 'BT', label: 'Bhutan' },
+  { value: 'BO', label: 'Bolivia' },
+  { value: 'BA', label: 'Bosnia and Herzegovina' },
+  { value: 'BW', label: 'Botswana' },
+  { value: 'BR', label: 'Brazil' },
+  { value: 'BN', label: 'Brunei' },
+  { value: 'BG', label: 'Bulgaria' },
+  { value: 'BF', label: 'Burkina Faso' },
+  { value: 'BI', label: 'Burundi' },
+  { value: 'KH', label: 'Cambodia' },
+  { value: 'CM', label: 'Cameroon' },
+  { value: 'CV', label: 'Cape Verde' },
+  { value: 'CF', label: 'Central African Republic' },
+  { value: 'TD', label: 'Chad' },
+  { value: 'CL', label: 'Chile' },
+  { value: 'CN', label: 'China' },
+  { value: 'CO', label: 'Colombia' },
+  { value: 'KM', label: 'Comoros' },
+  { value: 'CG', label: 'Congo' },
+  { value: 'CD', label: 'DR Congo' },
+  { value: 'CR', label: 'Costa Rica' },
+  { value: 'HR', label: 'Croatia' },
+  { value: 'CU', label: 'Cuba' },
+  { value: 'CY', label: 'Cyprus' },
+  { value: 'CZ', label: 'Czech Republic' },
+  { value: 'DK', label: 'Denmark' },
+  { value: 'DJ', label: 'Djibouti' },
+  { value: 'DM', label: 'Dominica' },
+  { value: 'DO', label: 'Dominican Republic' },
+  { value: 'EC', label: 'Ecuador' },
+  { value: 'EG', label: 'Egypt' },
+  { value: 'SV', label: 'El Salvador' },
+  { value: 'GQ', label: 'Equatorial Guinea' },
+  { value: 'ER', label: 'Eritrea' },
+  { value: 'EE', label: 'Estonia' },
+  { value: 'ET', label: 'Ethiopia' },
+  { value: 'FJ', label: 'Fiji' },
+  { value: 'FI', label: 'Finland' },
+  { value: 'GA', label: 'Gabon' },
+  { value: 'GM', label: 'Gambia' },
+  { value: 'GE', label: 'Georgia' },
+  { value: 'GH', label: 'Ghana' },
+  { value: 'GR', label: 'Greece' },
+  { value: 'GD', label: 'Grenada' },
+  { value: 'GT', label: 'Guatemala' },
+  { value: 'GN', label: 'Guinea' },
+  { value: 'GW', label: 'Guinea-Bissau' },
+  { value: 'GY', label: 'Guyana' },
+  { value: 'HT', label: 'Haiti' },
+  { value: 'HN', label: 'Honduras' },
+  { value: 'HU', label: 'Hungary' },
+  { value: 'IS', label: 'Iceland' },
+  { value: 'ID', label: 'Indonesia' },
+  { value: 'IR', label: 'Iran' },
+  { value: 'IQ', label: 'Iraq' },
+  { value: 'IE', label: 'Ireland' },
+  { value: 'IL', label: 'Israel' },
+  { value: 'IT', label: 'Italy' },
+  { value: 'JM', label: 'Jamaica' },
+  { value: 'JP', label: 'Japan' },
+  { value: 'JO', label: 'Jordan' },
+  { value: 'KZ', label: 'Kazakhstan' },
+  { value: 'KW', label: 'Kuwait' },
+  { value: 'KG', label: 'Kyrgyzstan' },
+  { value: 'LA', label: 'Laos' },
+  { value: 'LV', label: 'Latvia' },
+  { value: 'LB', label: 'Lebanon' },
+  { value: 'LS', label: 'Lesotho' },
+  { value: 'LR', label: 'Liberia' },
+  { value: 'LY', label: 'Libya' },
+  { value: 'LI', label: 'Liechtenstein' },
+  { value: 'LT', label: 'Lithuania' },
+  { value: 'LU', label: 'Luxembourg' },
+  { value: 'MG', label: 'Madagascar' },
+  { value: 'MW', label: 'Malawi' },
+  { value: 'MY', label: 'Malaysia' },
+  { value: 'MV', label: 'Maldives' },
+  { value: 'ML', label: 'Mali' },
+  { value: 'MT', label: 'Malta' },
+  { value: 'MH', label: 'Marshall Islands' },
+  { value: 'MR', label: 'Mauritania' },
+  { value: 'MU', label: 'Mauritius' },
+  { value: 'MX', label: 'Mexico' },
+  { value: 'FM', label: 'Micronesia' },
+  { value: 'MD', label: 'Moldova' },
+  { value: 'MC', label: 'Monaco' },
+  { value: 'MN', label: 'Mongolia' },
+  { value: 'ME', label: 'Montenegro' },
+  { value: 'MA', label: 'Morocco' },
+  { value: 'MZ', label: 'Mozambique' },
+  { value: 'MM', label: 'Myanmar' },
+  { value: 'NA', label: 'Namibia' },
+  { value: 'NR', label: 'Nauru' },
+  { value: 'NP', label: 'Nepal' },
+  { value: 'NL', label: 'Netherlands' },
+  { value: 'NZ', label: 'New Zealand' },
+  { value: 'NI', label: 'Nicaragua' },
+  { value: 'NE', label: 'Niger' },
+  { value: 'KP', label: 'North Korea' },
+  { value: 'MK', label: 'North Macedonia' },
+  { value: 'NO', label: 'Norway' },
+  { value: 'OM', label: 'Oman' },
+  { value: 'PK', label: 'Pakistan' },
+  { value: 'PW', label: 'Palau' },
+  { value: 'PA', label: 'Panama' },
+  { value: 'PG', label: 'Papua New Guinea' },
+  { value: 'PY', label: 'Paraguay' },
+  { value: 'PE', label: 'Peru' },
+  { value: 'PH', label: 'Philippines' },
+  { value: 'PL', label: 'Poland' },
+  { value: 'PT', label: 'Portugal' },
+  { value: 'QA', label: 'Qatar' },
+  { value: 'RO', label: 'Romania' },
+  { value: 'RU', label: 'Russia' },
+  { value: 'RW', label: 'Rwanda' },
+  { value: 'KN', label: 'Saint Kitts and Nevis' },
+  { value: 'LC', label: 'Saint Lucia' },
+  { value: 'VC', label: 'Saint Vincent and the Grenadines' },
+  { value: 'WS', label: 'Samoa' },
+  { value: 'SM', label: 'San Marino' },
+  { value: 'ST', label: 'Sao Tome and Principe' },
+  { value: 'SA', label: 'Saudi Arabia' },
+  { value: 'SN', label: 'Senegal' },
+  { value: 'RS', label: 'Serbia' },
+  { value: 'SC', label: 'Seychelles' },
+  { value: 'SL', label: 'Sierra Leone' },
+  { value: 'SK', label: 'Slovakia' },
+  { value: 'SI', label: 'Slovenia' },
+  { value: 'SB', label: 'Solomon Islands' },
+  { value: 'SO', label: 'Somalia' },
+  { value: 'KR', label: 'South Korea' },
+  { value: 'SS', label: 'South Sudan' },
+  { value: 'ES', label: 'Spain' },
+  { value: 'LK', label: 'Sri Lanka' },
+  { value: 'SD', label: 'Sudan' },
+  { value: 'SR', label: 'Suriname' },
+  { value: 'SZ', label: 'Eswatini' },
+  { value: 'SE', label: 'Sweden' },
+  { value: 'CH', label: 'Switzerland' },
+  { value: 'SY', label: 'Syria' },
+  { value: 'TW', label: 'Taiwan' },
+  { value: 'TJ', label: 'Tajikistan' },
+  { value: 'TZ', label: 'Tanzania' },
+  { value: 'TH', label: 'Thailand' },
+  { value: 'TL', label: 'Timor-Leste' },
+  { value: 'TG', label: 'Togo' },
+  { value: 'TO', label: 'Tonga' },
+  { value: 'TT', label: 'Trinidad and Tobago' },
+  { value: 'TN', label: 'Tunisia' },
+  { value: 'TR', label: 'Turkey' },
+  { value: 'TM', label: 'Turkmenistan' },
+  { value: 'TV', label: 'Tuvalu' },
+  { value: 'UG', label: 'Uganda' },
+  { value: 'UA', label: 'Ukraine' },
+  { value: 'UY', label: 'Uruguay' },
+  { value: 'UZ', label: 'Uzbekistan' },
+  { value: 'VU', label: 'Vanuatu' },
+  { value: 'VA', label: 'Vatican City' },
+  { value: 'VE', label: 'Venezuela' },
+  { value: 'VN', label: 'Vietnam' },
+  { value: 'YE', label: 'Yemen' },
+  { value: 'ZM', label: 'Zambia' },
+  { value: 'ZW', label: 'Zimbabwe' }
+];
 
 const EnrollPage = () => {
   // ----- STEP STATE -----
@@ -32,7 +279,7 @@ const EnrollPage = () => {
     accountType: '',
     accountCurrency: 'USD',
     // KYC
-    docType: 'passport', // passport | stateid | driverslicense
+    docType: 'passport',
     // Step 5
     pin: ['', '', '', ''],
     password: '',
@@ -58,7 +305,6 @@ const EnrollPage = () => {
     const newPin = [...formData.pin];
     newPin[index] = value.replace(/\D/g, '');
     setFormData({ ...formData, pin: newPin });
-    // Auto-focus next
     if (value && index < 3) {
       pinRefs[index + 1].current.focus();
     }
@@ -88,13 +334,11 @@ const EnrollPage = () => {
   // ----- FILE UPLOAD HANDLING -----
   const handleFileUpload = (uploadId, file) => {
     if (!file) return;
-    // Max size 10MB
     if (file.size > 10 * 1024 * 1024) {
       alert('File size exceeds 10 MB.');
       return;
     }
     setFiles({ ...files, [uploadId]: file });
-    // Preview
     const reader = new FileReader();
     reader.onload = (e) => {
       setFilePreviews({ ...filePreviews, [uploadId]: e.target.result });
@@ -130,7 +374,6 @@ const EnrollPage = () => {
 
   // ----- STEP VALIDATION -----
   const validateStep = (step) => {
-    // Step 4 has KYC validation
     if (step === 4) {
       return validateKyc();
     }
@@ -147,19 +390,17 @@ const EnrollPage = () => {
     goToStep(step);
   };
 
-  // ----- FORM SUBMIT (FIXED) -----
+  // ----- FORM SUBMIT -----
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.terms) {
       alert('Please agree to the Terms of Service and Privacy Policy.');
       return;
     }
-
     if (formData.password !== formData.confirmPassword) {
       alert('Passwords do not match.');
       return;
     }
-
     setIsSubmitting(true);
     try {
       const payload = {
@@ -183,22 +424,14 @@ const EnrollPage = () => {
         accountType: formData.accountType,
         accountCurrency: formData.accountCurrency,
         docType: formData.docType,
-        pin: formData.pin.join(''), // convert to string
+        pin: formData.pin.join(''),
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         terms: formData.terms,
       };
-
-      // Use the imported register function
       const data = await register(payload);
-
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-
+      if (data.token) localStorage.setItem('token', data.token);
+      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
       alert('✅ Account created successfully!\n\nWelcome to Summit Shares!');
       window.location.href = '/dashboard';
     } catch (err) {
@@ -260,7 +493,9 @@ const EnrollPage = () => {
               </div>
             </div>
             <div className="flex justify-end items-center mt-4 pt-4 border-t border-brand-border">
-              <button type="button" onClick={() => goToStep(2)} className="bg-brand-dark hover:bg-neutral-900 text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition">Next</button>
+              <button type="button" onClick={() => goToStep(2)} className="bg-brand-dark hover:bg-neutral-900 text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition" disabled={!formData.firstName || !formData.lastName || !formData.dob || !formData.email || !formData.phone}>
+                Next
+              </button>
             </div>
           </>
         );
@@ -286,7 +521,12 @@ const EnrollPage = () => {
               </div>
               <div className="form-field">
                 <label>State / Province <span className="required">*</span></label>
-                <input type="text" placeholder="Enter state or province" required value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})} />
+                <select required value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})}>
+                  <option value="">Select your state</option>
+                  {US_STATES.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-field">
                 <label>Zip / Postal Code <span className="required">*</span></label>
@@ -295,18 +535,9 @@ const EnrollPage = () => {
               <div className="form-field">
                 <label>Country <span className="required">*</span></label>
                 <select required value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})}>
-                  <option value="US">🇺🇸 United States</option>
-                  <option value="GB">🇬🇧 United Kingdom</option>
-                  <option value="CA">🇨🇦 Canada</option>
-                  <option value="AU">🇦🇺 Australia</option>
-                  <option value="ZA">🇿🇦 South Africa</option>
-                  <option value="NG">🇳🇬 Nigeria</option>
-                  <option value="KE">🇰🇪 Kenya</option>
-                  <option value="IN">🇮🇳 India</option>
-                  <option value="DE">🇩🇪 Germany</option>
-                  <option value="FR">🇫🇷 France</option>
-                  <option value="AE">🇦🇪 United Arab Emirates</option>
-                  <option value="SG">🇸🇬 Singapore</option>
+                  {COUNTRIES.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -401,17 +632,17 @@ const EnrollPage = () => {
               <div className="form-field">
                 <label>Account Currency <span className="required">*</span></label>
                 <select required value={formData.accountCurrency} onChange={e => setFormData({...formData, accountCurrency: e.target.value})}>
-                  <option value="USD">🇺🇸 America (United States) Dollars – USD</option>
-                  <option value="EUR">🇪🇺 Euro – EUR</option>
-                  <option value="GBP">🇬🇧 British Pound – GBP</option>
-                  <option value="CAD">🇨🇦 Canadian Dollar – CAD</option>
-                  <option value="AUD">🇦🇺 Australian Dollar – AUD</option>
-                  <option value="ZAR">🇿🇦 South African Rand – ZAR</option>
-                  <option value="NGN">🇳🇬 Nigerian Naira – NGN</option>
-                  <option value="KES">🇰🇪 Kenyan Shilling – KES</option>
-                  <option value="INR">🇮🇳 Indian Rupee – INR</option>
-                  <option value="AED">🇦🇪 UAE Dirham – AED</option>
-                  <option value="SGD">🇸🇬 Singapore Dollar – SGD</option>
+                  <option value="USD">US Dollar (USD)</option>
+                  <option value="EUR">Euro (EUR)</option>
+                  <option value="GBP">British Pound (GBP)</option>
+                  <option value="CAD">Canadian Dollar (CAD)</option>
+                  <option value="AUD">Australian Dollar (AUD)</option>
+                  <option value="ZAR">South African Rand (ZAR)</option>
+                  <option value="NGN">Nigerian Naira (NGN)</option>
+                  <option value="KES">Kenyan Shilling (KES)</option>
+                  <option value="INR">Indian Rupee (INR)</option>
+                  <option value="AED">UAE Dirham (AED)</option>
+                  <option value="SGD">Singapore Dollar (SGD)</option>
                 </select>
               </div>
 
@@ -452,7 +683,6 @@ const EnrollPage = () => {
 
                 {/* Dynamic upload fields */}
                 <div id="kycUploadsContainer">
-                  {/* Passport */}
                   {formData.docType === 'passport' && (
                     <div>
                       <p className="text-xs text-brand-slateText mb-2">Please upload a clear photo of your passport photo page and the information page.</p>
@@ -476,7 +706,6 @@ const EnrollPage = () => {
                       />
                     </div>
                   )}
-                  {/* State ID */}
                   {formData.docType === 'stateid' && (
                     <div>
                       <p className="text-xs text-brand-slateText mb-2">Please upload a clear photo of the front and back of your State ID card.</p>
@@ -500,7 +729,6 @@ const EnrollPage = () => {
                       />
                     </div>
                   )}
-                  {/* Driver's License */}
                   {formData.docType === 'driverslicense' && (
                     <div>
                       <p className="text-xs text-brand-slateText mb-2">Please upload a clear photo of the front and back of your driver’s license.</p>
@@ -605,13 +833,11 @@ const EnrollPage = () => {
 
               <div className="form-field">
                 <label>Terms & Conditions</label>
-
-                {/* Round "Accept all" button */}
                 <div className="flex items-center gap-3 mt-2">
                   <button
                     type="button"
                     aria-label="Accept all terms and conditions"
-                    onClick={() => setFormData({ ...formData, terms: true })}
+                    onClick={() => setFormData({ ...formData, terms: !formData.terms })}
                     className="rounded-full w-12 h-12 flex items-center justify-center transition"
                     style={{
                       background: formData.terms ? '#2D9B4E' : '#e8e2d9',
@@ -626,20 +852,12 @@ const EnrollPage = () => {
 
                   <div className="flex-1">
                     <div className="flex items-start gap-2">
-                      <input
-                        type="checkbox"
-                        id="termsCheck"
-                        className="mt-0.5 w-4 h-4 text-brand-dark border-brand-border rounded-sm focus:ring-brand-gold cursor-pointer"
-                        checked={formData.terms}
-                        onChange={(e) => setFormData({ ...formData, terms: e.target.checked })}
-                      />
-                      <label htmlFor="termsCheck" className="text-xs text-brand-slateText cursor-pointer">
+                      <label className="text-xs text-brand-slateText cursor-pointer">
                         I agree to the <a href="#" className="text-brand-gold font-semibold hover:underline">Terms of Service</a> and <a href="#" className="text-brand-gold font-semibold hover:underline">Privacy Policy</a>
                       </label>
                     </div>
-
                     <p className="text-[10px] text-brand-slateText mt-1">
-                      Tap the round button to accept both T&amp;C and Privacy Policy.
+                      Click the round button to toggle acceptance.
                     </p>
                   </div>
                 </div>
@@ -791,7 +1009,7 @@ const EnrollPage = () => {
         </section>
       </main>
 
-      {/* Trust badges */}
+      {/* Trust badges + FSP number */}
       <section className="py-6 bg-white border-t border-brand-border">
         <div className="container mx-auto px-4">
           <div className="flex flex-wrap justify-center items-center gap-6 md:gap-10 text-xs font-semibold uppercase tracking-wider text-brand-slateText">
@@ -811,6 +1029,10 @@ const EnrollPage = () => {
               <svg className="w-4 h-4 text-brand-gold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
               Regulated & Compliant
             </span>
+          </div>
+          {/* FSP Number / Regulatory Info */}
+          <div className="text-center mt-4 text-[10px] text-brand-slateText font-medium">
+            Summit Shares is a registered Financial Services Provider (FSP No. 12345) and complies with all applicable banking regulations.
           </div>
         </div>
       </section>
@@ -833,9 +1055,7 @@ const EnrollPage = () => {
       {/* Font Awesome for icons */}
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-      {/* Additional styles for file uploads, etc. (same as HTML) */}
       <style>{`
-        /* All the custom CSS from the HTML – inline here for brevity */
         .enroll-hero-bg { background-image: linear-gradient(rgba(11,11,11,0.85), rgba(11,11,11,0.92)), url('fill.jpg'); background-size: cover; background-position: center; }
         .step-dot .circle { transition: all 0.3s ease; }
         .step-content { display: none; animation: fadeIn 0.4s ease; }
