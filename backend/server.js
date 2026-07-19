@@ -93,7 +93,7 @@ const staticBuildPath = path.join(__dirname, '..', 'summit-shares', 'dist');
 // If dist exists, serve it. Otherwise keep API-only behavior.
 app.use(express.static(staticBuildPath));
 
-app.get('*', (req, res) => {
+app.get('/(.*)', (req, res) => {
   // Only try SPA fallback for non-API routes
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ success: false, message: 'Route not found' });
