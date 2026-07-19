@@ -5,7 +5,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const winston = require('winston'); // moved import up
+const winston = require('winston');
+const path = require('path');
 
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
@@ -24,14 +25,13 @@ const isProduction = process.env.NODE_ENV === 'production';
 // ----- Security Middleware -----
 app.use(helmet());
 
-// ----- CORS: permissive in dev, restricted in prod -----
+// ----- CORS -----
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
   : [];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
     if (!isProduction || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -58,7 +58,7 @@ app.use('/api', globalLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ----- Routes -----
+// ----- API Routes (must come before static and fallback) -----
 app.get('/api/test', (_req, res) => res.status(200).json({ success: true, message: 'API is working' }));
 
 app.use('/api/auth', authRoutes);
@@ -85,8 +85,27 @@ app.post('/api/apply', (req, res) => {
   });
 });
 
-// 404
-app.use((_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
+// ----- Serve React static files (from the frontend build) -----
+const buildPath = path.join(__dirname, '../summit-shares/dist');
+app.use(express.static(buildPath));
+
+// ----- SPA fallback: serve index.html for any non-API request -----
+app.use((req, res, next) => {
+  // Only handle non-API routes
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(buildPath, 'index.html'));
+  } else {
+    next();
+  }
+});
+
+// ----- API 404 handler (for unmatched API routes) -----
+app.use((req, res) => {
+  if (req.path.startsWith('/api')) {
+    res.status(404).json({ success: false, message: 'API route not found' });
+  }
+  // Non-API routes are already handled by the fallback above
+});
 
 // Logger
 const logger = winston.createLogger({
@@ -101,7 +120,7 @@ if (!isProduction) {
 }
 
 // Global error handler
-app.use((err, _req, res, _next) => {
+app.use((err, req, res, _next) => {
   logger.error(err.stack);
   const status = err.status || 500;
   res.status(status).json({ success: false, message: err.message || 'Internal server error' });
