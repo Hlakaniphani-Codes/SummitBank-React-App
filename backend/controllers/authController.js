@@ -30,16 +30,22 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// ----- REGISTER (FULL, WORKING) -----
+// ----- REGISTER -----
+// Postgres-compatible implementation for Render DATABASE_URL (pg)
 exports.register = async (req, res) => {
   const payload = req.body;
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
+
   try {
-    await connection.beginTransaction();
+    await client.query('BEGIN');
 
     // Check if email already exists
-    const [existing] = await connection.query('SELECT id FROM users WHERE email = ?', [payload.email]);
-    if (existing.length > 0) {
+    const existingRes = await client.query(
+      'SELECT id FROM users WHERE email = $1',
+      [payload.email]
+    );
+
+    if (existingRes.rows.length > 0) {
       throw new Error('Email already registered');
     }
 
@@ -48,14 +54,16 @@ exports.register = async (req, res) => {
     const pinHash = await bcrypt.hash(String(payload.pin || '').replace(/,/g, ''), 10);
     const ssnEncrypted = Buffer.from(String(payload.ssn || ''), 'utf8');
 
-    // Insert user
-    const [userResult] = await connection.query(
+    // Insert user and get id
+    const userInsertRes = await client.query(
       `INSERT INTO users (
         first_name, middle_name, last_name, date_of_birth, email, phone,
         street, apartment, city, state, zip, country,
         occupation, employer, income_range, source_of_funds,
         ssn_encrypted, doc_type, pin_hash, password_hash, terms_accepted
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+      ) RETURNING id`,
       [
         payload.firstName,
         payload.middleName || null,
@@ -81,42 +89,53 @@ exports.register = async (req, res) => {
       ]
     );
 
-    // MySQL returns insertId, Postgres returns rows/RETURNING id.
-    // This codepath must work whichever driver is backing `pool`.
-    const userId =
-      userResult?.insertId ??
-      userResult?.[0]?.id ??
-      userResult?.rows?.[0]?.id;
-
-    if (!userId) {
-      throw new Error('Failed to retrieve inserted user id');
-    }
-
+    const userId = userInsertRes.rows[0]?.id;
+    if (!userId) throw new Error('Failed to retrieve inserted user id');
 
     // Create checking account
-    await connection.query(
+    await client.query(
       `INSERT INTO accounts (user_id, account_number, account_type, currency, balance, routing_number, status, opened_at)
-       VALUES (?, ?, 'checking', ?, 0.00, '021000021', 'active', CURDATE())`,
-      [userId, `CHK-${1000 + Math.floor(Math.random() * 9000)}`, payload.accountCurrency || 'USD']
+       VALUES ($1,$2,'checking',$3,0.00,'021000021','active',CURRENT_DATE)`,
+      [
+        userId,
+        `CHK-${1000 + Math.floor(Math.random() * 9000)}`,
+        payload.accountCurrency || 'USD',
+      ]
     );
 
     // Create savings account
-    await connection.query(
+    await client.query(
       `INSERT INTO accounts (user_id, account_number, account_type, currency, balance, routing_number, apy, status, opened_at)
-       VALUES (?, ?, 'savings', ?, 0.00, '021000021', 4.25, 'active', CURDATE())`,
-      [userId, `SAV-${1000 + Math.floor(Math.random() * 9000)}`, payload.accountCurrency || 'USD']
+       VALUES ($1,$2,'savings',$3,0.00,'021000021',4.25,'active',CURRENT_DATE)`,
+      [
+        userId,
+        `SAV-${1000 + Math.floor(Math.random() * 9000)}`,
+        payload.accountCurrency || 'USD',
+      ]
     );
 
     // Create default debit card
-    await connection.query(
-      `INSERT INTO cards (user_id, account_id, card_type, card_network, last4, expiry_month, expiry_year, cardholder_name, status)
-       VALUES (?, (SELECT id FROM accounts WHERE user_id = ? AND account_type = 'checking' ORDER BY id LIMIT 1), 'debit', 'visa', '4829', 12, 2028, ?, 'active')`,
-      [userId, userId, `${payload.firstName} ${payload.lastName}`.trim()]
+    await client.query(
+      `INSERT INTO cards (
+        user_id, account_id, card_type, card_network, last4,
+        expiry_month, expiry_year, cardholder_name, status
+      ) VALUES (
+        $1,
+        (SELECT id FROM accounts WHERE user_id = $1 AND account_type = 'checking' ORDER BY id LIMIT 1),
+        'debit','visa','4829',12,2028,$2,'active'
+      )`,
+      [userId, `${payload.firstName} ${payload.lastName}`.trim()]
     );
 
-    await connection.commit();
+    await client.query('COMMIT');
 
-    const user = { id: userId, first_name: payload.firstName, last_name: payload.lastName, email: payload.email };
+    const user = {
+      id: userId,
+      first_name: payload.firstName,
+      last_name: payload.lastName,
+      email: payload.email,
+    };
+
     const token = buildToken(user);
 
     return res.status(201).json({
@@ -126,53 +145,80 @@ exports.register = async (req, res) => {
       user,
     });
   } catch (error) {
-    await connection.rollback();
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {}
+
     console.error('Registration error:', error);
-    return res.status(400).json({ success: false, message: error.message || 'Registration failed' });
+    return res.status(400).json({
+      success: false,
+      message: error.message || 'Registration failed',
+    });
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
-// ----- LOGIN (unchanged) -----
+// ----- LOGIN -----
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const [rows] = await pool.query('SELECT id, first_name, last_name, email, password_hash, is_active FROM users WHERE email = ?', [email]);
+    const { rows } = await pool.query(
+      'SELECT id, first_name, last_name, email, password_hash, is_active FROM users WHERE email = $1',
+      [email]
+    );
+
     if (rows.length === 0) throw new Error('Invalid email or password');
+
     const user = rows[0];
     if (!user.is_active) throw new Error('Account is deactivated');
+
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) throw new Error('Invalid email or password');
+
     const token = buildToken(user);
-    return res.json({ success: true, message: 'Login successful', token, user });
+
+    return res.json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user,
+    });
   } catch (error) {
     console.error('Login error:', error);
     return res.status(401).json({ success: false, message: error.message });
   }
 };
 
-// ----- FORGOT PASSWORD (unchanged) -----
+// ----- FORGOT PASSWORD -----
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
   try {
-    const [rows] = await pool.query('SELECT id, email FROM users WHERE email = ?', [email]);
+    const { rows } = await pool.query(
+      'SELECT id, email FROM users WHERE email = $1',
+      [email]
+    );
+
     if (rows.length === 0) {
       return res.json({ success: true, message: 'If that email exists, we sent a reset link.' });
     }
+
     const user = rows[0];
     const resetToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
     await pool.query(
       `INSERT INTO password_resets (user_id, token, expires_at)
-       VALUES (?, ?, ?)
+       VALUES ($1, $2, $3)
        ON CONFLICT (token) DO UPDATE SET
          user_id = EXCLUDED.user_id,
          token = EXCLUDED.token,
          expires_at = EXCLUDED.expires_at`,
       [user.id, resetToken, expiresAt]
     );
+
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+
     await transporter.sendMail({
       to: user.email,
       subject: 'Reset your Summit Shares password',
@@ -180,6 +226,7 @@ exports.forgotPassword = async (req, res) => {
              <a href="${resetUrl}">${resetUrl}</a>
              <p>This link expires in 1 hour.</p>`,
     });
+
     return res.json({ success: true, message: 'If that email exists, we sent a reset link.' });
   } catch (error) {
     console.error('Forgot password error:', error);
@@ -187,21 +234,25 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// ----- RESET PASSWORD (unchanged) -----
+// ----- RESET PASSWORD -----
 exports.resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
   try {
-    const [rows] = await pool.query(
-      'SELECT user_id, expires_at FROM password_resets WHERE token = ? AND expires_at > NOW()',
+    const { rows } = await pool.query(
+      'SELECT user_id, expires_at FROM password_resets WHERE token = $1 AND expires_at > NOW()',
       [token]
     );
+
     if (rows.length === 0) {
       return res.status(400).json({ success: false, message: 'Invalid or expired token' });
     }
+
     const userId = rows[0].user_id;
     const hashed = await bcrypt.hash(newPassword, 10);
-    await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [hashed, userId]);
-    await pool.query('DELETE FROM password_resets WHERE token = ?', [token]);
+
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashed, userId]);
+    await pool.query('DELETE FROM password_resets WHERE token = $1', [token]);
+
     return res.json({ success: true, message: 'Password reset successfully' });
   } catch (error) {
     console.error('Reset password error:', error);
@@ -213,3 +264,4 @@ exports.resetPassword = async (req, res) => {
 exports.uploadKyc = async (req, res) => {
   return res.json({ success: true, message: 'KYC upload flow ready' });
 };
+
