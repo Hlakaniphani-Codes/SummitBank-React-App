@@ -81,7 +81,17 @@ exports.register = async (req, res) => {
       ]
     );
 
-    const userId = userResult.insertId; // <-- THIS WAS MISSING
+    // MySQL returns insertId, Postgres returns rows/RETURNING id.
+    // This codepath must work whichever driver is backing `pool`.
+    const userId =
+      userResult?.insertId ??
+      userResult?.[0]?.id ??
+      userResult?.rows?.[0]?.id;
+
+    if (!userId) {
+      throw new Error('Failed to retrieve inserted user id');
+    }
+
 
     // Create checking account
     await connection.query(
