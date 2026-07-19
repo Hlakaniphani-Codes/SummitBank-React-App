@@ -605,17 +605,43 @@ const EnrollPage = () => {
 
               <div className="form-field">
                 <label>Terms & Conditions</label>
-                <div className="flex items-start gap-2 mt-1">
-                  <input
-                    type="checkbox"
-                    id="termsCheck"
-                    className="mt-0.5 w-4 h-4 text-brand-dark border-brand-border rounded-sm focus:ring-brand-gold cursor-pointer"
-                    checked={formData.terms}
-                    onChange={(e) => setFormData({...formData, terms: e.target.checked})}
-                  />
-                  <label htmlFor="termsCheck" className="text-xs text-brand-slateText cursor-pointer">
-                    I agree to the <a href="#" className="text-brand-gold font-semibold hover:underline">Terms of Service</a> and <a href="#" className="text-brand-gold font-semibold hover:underline">Privacy Policy</a>
-                  </label>
+
+                {/* Round "Accept all" button */}
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    type="button"
+                    aria-label="Accept all terms and conditions"
+                    onClick={() => setFormData({ ...formData, terms: true })}
+                    className="rounded-full w-12 h-12 flex items-center justify-center transition"
+                    style={{
+                      background: formData.terms ? '#2D9B4E' : '#e8e2d9',
+                      color: formData.terms ? '#fff' : '#5a5a5a',
+                      border: formData.terms ? '2px solid #2D9B4E' : '2px solid #e8e2d9',
+                      boxShadow: formData.terms ? '0 6px 18px rgba(45,155,78,0.25)' : 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <i className={formData.terms ? 'fas fa-check' : 'fas fa-circle-check'}></i>
+                  </button>
+
+                  <div className="flex-1">
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        id="termsCheck"
+                        className="mt-0.5 w-4 h-4 text-brand-dark border-brand-border rounded-sm focus:ring-brand-gold cursor-pointer"
+                        checked={formData.terms}
+                        onChange={(e) => setFormData({ ...formData, terms: e.target.checked })}
+                      />
+                      <label htmlFor="termsCheck" className="text-xs text-brand-slateText cursor-pointer">
+                        I agree to the <a href="#" className="text-brand-gold font-semibold hover:underline">Terms of Service</a> and <a href="#" className="text-brand-gold font-semibold hover:underline">Privacy Policy</a>
+                      </label>
+                    </div>
+
+                    <p className="text-[10px] text-brand-slateText mt-1">
+                      Tap the round button to accept both T&amp;C and Privacy Policy.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

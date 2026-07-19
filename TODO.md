@@ -1,7 +1,8 @@
-# TODO
-
-- [ ] Fix `summit-shares/src/pages/DashboardPage.jsx` syntax error caused by removed/partial data array.
-- [ ] Re-run the front-end build/lint to ensure the component compiles.
-- [ ] Migrate backend database from MySQL to PostgreSQL (backend/config/db.js, utils store, and schema files)
-
+- [ ] Confirm https://summitbank.onrender.com is served by Render Static Site (not Web Service)
+- [ ] Configure Static Site Redirects/Rewrites for SPA fallback:
+      - source: /(.*)
+      - destination: /index.html
+      - exclude: /api/* (if supported)
+- [ ] Redeploy/publish the Static Site
+- [ ] Verify https://summitbank.onrender.com/dashboard loads React
 

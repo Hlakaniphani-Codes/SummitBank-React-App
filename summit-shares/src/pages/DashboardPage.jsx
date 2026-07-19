@@ -1363,7 +1363,31 @@ const DashboardPage = () => {
               </div>
 
               <div className="cards-row">
+                {/* Welcome message */}
+                <div className="card-box" style={{ gridColumn: '1 / -1', background: '#fff', borderColor: '#e8e2d9', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0B0B0B', letterSpacing: 0.3 }}>
+                      {(() => {
+                        const hour = new Date().getHours();
+                        const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+                        const name = currentUser?.firstName || 'there';
+                        return `${greeting}, ${name}`;
+                      })()}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#8a8a8a', marginTop: 2 }}>
+                      Here’s what’s happening in your account right now.
+                    </div>
+                  </div>
+                  <div>
+                    <button className="btn-outline" style={{ fontSize: 11, padding: '7px 12px' }} onClick={() => showToast('Welcome & trust settings updated')}>
+                      <i className="fas fa-handshake-angle" style={{ color: '#C9A84C', marginRight: 6 }}></i>
+                      Trust & Insights
+                    </button>
+                  </div>
+                </div>
+
                 {dashboardData.accounts?.map((account) => (
+
                   <div key={account.id} className="card-box">
                     <div className="flex items-start justify-between">
                       <div>
@@ -1389,7 +1413,23 @@ const DashboardPage = () => {
                     <div className="card-top">
                       <div>
                         <div className="card-type">{dashboardData.cards[0].card_type === 'credit' ? 'Credit Card' : 'Debit Card'}</div>
-                        <div className="card-status"><span className="dot"></span> {dashboardData.cards[0].status}</div>
+                        {(() => {
+                          const apiStatus = dashboardData.cards[0]?.status;
+                          const isInactive = apiStatus && apiStatus !== 'active';
+
+                          // Spec: display an inactive/grey state on the dashboard card status.
+                          // Priority: show grey Inactive when status is not active; otherwise show Active.
+                          const showStatus = apiStatus === 'active' ? 'Active' : 'Inactive';
+                          const dotColor = apiStatus === 'active' ? '#2D9B4E' : '#8a8a8a';
+                          const bg = apiStatus === 'active' ? 'rgba(45,155,78,0.12)' : '#e8e2d9';
+                          const textColor = apiStatus === 'active' ? '#2D9B4E' : '#8a8a8a';
+
+                          return (
+                            <div className="card-status" style={{ color: textColor, background: bg }}>
+                              <span className="dot" style={{ background: dotColor }}></span> {showStatus}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="card-network">
                         <span className="contactless"><i className="fas fa-wifi"></i></span>
@@ -1423,20 +1463,32 @@ const DashboardPage = () => {
               </div>
               <div className="widget-box">
                 <div className="widget-header">
-                  <h4><i className="fas fa-chart-line text-brand-gold mr-2"></i> Credit Score</h4>
-                  <a onClick={() => showToast('Credit score details opened')}>View Details</a>
+                  <h4><i className="fas fa-lightbulb text-brand-gold mr-2"></i> Smart Insights</h4>
+                  <a onClick={() => showToast('Smart insights refreshed')}>Refresh</a>
                 </div>
-                <div className="credit-score-ring">
-                  <div className="ring" style={{ background: 'conic-gradient(#C9A84C 0% 74%, #f0ede8 74% 100%)' }}>
-                    <div className="inner">742<span>Excellent</span></div>
+
+                <div className="insights-list">
+                  <div className="insight-item">
+                    <div className="insight-icon"><i className="fas fa-wallet"></i></div>
+                    <div className="insight-content">
+                      <div className="insight-title">Spending Focus</div>
+                      <div className="insight-desc">Today’s check-in: try keeping discretionary spend under 15%.</div>
+                    </div>
                   </div>
-                  <div className="score-details">
-                    <div className="score-label">Excellent Credit</div>
-                    <div className="score-sub">Updated: July 12, 2026</div>
-                    <div className="score-factors">
-                      <span className="factor"><i className="fas fa-check-circle"></i> Payment History</span>
-                      <span className="factor"><i className="fas fa-check-circle"></i> Utilization 12%</span>
-                      <span className="factor"><i className="fas fa-info-circle"></i> 8 accounts</span>
+
+                  <div className="insight-item">
+                    <div className="insight-icon"><i className="fas fa-piggy-bank"></i></div>
+                    <div className="insight-content">
+                      <div className="insight-title">Savings Boost</div>
+                      <div className="insight-desc">Set a weekly goal—small deposits compound fast.</div>
+                    </div>
+                  </div>
+
+                  <div className="insight-item">
+                    <div className="insight-icon"><i className="fas fa-gift"></i></div>
+                    <div className="insight-content">
+                      <div className="insight-title">Rewards Reminder</div>
+                      <div className="insight-desc">Use your card for eligible categories to maximize points.</div>
                     </div>
                   </div>
                 </div>
