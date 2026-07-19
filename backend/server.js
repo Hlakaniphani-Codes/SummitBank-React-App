@@ -5,8 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const winston = require('winston');
-const path = require('path');   // <-- added for static file serving
+const winston = require('winston'); // moved import up
 
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
@@ -32,6 +31,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
     if (!isProduction || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -58,7 +58,7 @@ app.use('/api', globalLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ----- API Routes (must come before static and catch-all) -----
+// ----- Routes -----
 app.get('/api/test', (_req, res) => res.status(200).json({ success: true, message: 'API is working' }));
 
 app.use('/api/auth', authRoutes);
@@ -85,23 +85,8 @@ app.post('/api/apply', (req, res) => {
   });
 });
 
-// ----- Serve React static files (from the frontend build) -----
-// The build is at ../summit-shares/dist relative to this file (backend/server.js)
-const buildPath = path.join(__dirname, '../summit-shares/dist');
-app.use(express.static(buildPath));
-
-// ----- Catch-all: serve index.html for any non-API request (SPA routing) -----
-app.get('*', (req, res) => {
-  res.sendFile(path.join(buildPath, 'index.html'));
-});
-
-// ----- 404 handler for API routes that weren't matched -----
-app.use((req, res) => {
-  if (req.path.startsWith('/api')) {
-    res.status(404).json({ success: false, message: 'API route not found' });
-  }
-  // For any other path, the catch-all already handled it.
-});
+// 404
+app.use((_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
 
 // Logger
 const logger = winston.createLogger({
@@ -116,7 +101,7 @@ if (!isProduction) {
 }
 
 // Global error handler
-app.use((err, req, res, _next) => {
+app.use((err, _req, res, _next) => {
   logger.error(err.stack);
   const status = err.status || 500;
   res.status(status).json({ success: false, message: err.message || 'Internal server error' });
