@@ -85,8 +85,26 @@ app.post('/api/apply', (req, res) => {
   });
 });
 
-// 404
-app.use((_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
+// Serve React SPA for client-side routes (e.g. /dashboard)
+// Render static site is configured separately in your case, but this makes the backend robust too.
+const path = require('path');
+const staticBuildPath = path.join(__dirname, '..', 'summit-shares', 'dist');
+
+// If dist exists, serve it. Otherwise keep API-only behavior.
+app.use(express.static(staticBuildPath));
+
+app.get('*', (req, res) => {
+  // Only try SPA fallback for non-API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ success: false, message: 'Route not found' });
+  }
+
+  res.sendFile(path.join(staticBuildPath, 'index.html'), (err) => {
+    if (err) {
+      return res.status(404).json({ success: false, message: 'Route not found' });
+    }
+  });
+});
 
 // Logger
 const logger = winston.createLogger({
