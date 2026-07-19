@@ -16,6 +16,21 @@ const handleResponse = async (res) => {
   return data;
 };
 
+// ---- AUTH ----
+export const register = (payload) =>
+  fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).then(handleResponse);
+
+export const login = (email, password) =>
+  fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  }).then(handleResponse);
+
 // ---- DASHBOARD ----
 export const getDashboard = () =>
   fetch(`${API_BASE}/dashboard`, { headers: headers() }).then(handleResponse);
@@ -84,10 +99,16 @@ export const markNotificationRead = (id) =>
   fetch(`${API_BASE}/notifications/${id}/read`, { method: 'PUT', headers: headers() }).then(handleResponse);
 
 // ---- USER PROFILE & PASSWORD ----
+export const getProfile = () =>
+  fetch(`${API_BASE}/user/profile`, { headers: headers() }).then(handleResponse);
+
+export const updateProfile = (payload) =>
+  fetch(`${API_BASE}/user/profile`, { method: 'PUT', headers: headers(), body: JSON.stringify(payload) }).then(handleResponse);
+
 export const changePassword = (payload) =>
   fetch(`${API_BASE}/user/profile/change-password`, { method: 'POST', headers: headers(), body: JSON.stringify(payload) }).then(handleResponse);
 
-// ---- SUPPORT TICKETS (NEW) ----
+// ---- SUPPORT ----
 export const submitSupportTicket = (payload) =>
   fetch(`${API_BASE}/support`, {
     method: 'POST',

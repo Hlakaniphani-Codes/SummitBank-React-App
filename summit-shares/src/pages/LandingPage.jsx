@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-
+import { login } from '../api'; // <-- IMPORT THE LOGIN FUNCTION
 
 // ----- useToast hook (unchanged) -----
 function useToast() {
@@ -152,6 +152,7 @@ export default function LandingPage() {
     };
   }, []);
 
+  // ---- UPDATED: use the imported `login` function ----
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     const identifier = loginForm.identifier.trim();
@@ -159,21 +160,11 @@ export default function LandingPage() {
     if (!identifier || !password) return;
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: identifier, password }),
-      });
+      const data = await login(identifier, password);
 
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        showToast(data.message || 'Login failed');
-        return;
+      if (data.token) {
+        localStorage.setItem('token', data.token);
       }
-
-      const token = data.token || data.access_token || data.jwt || null;
-      if (token) localStorage.setItem('token', token);
       if (data.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
       }
@@ -181,7 +172,7 @@ export default function LandingPage() {
       showToast('✅ Login successful');
       window.location.href = '/dashboard';
     } catch (err) {
-      showToast('Login error. Check backend connection.');
+      showToast(err.message || 'Login error. Check backend connection.');
     }
   };
 
@@ -257,7 +248,7 @@ export default function LandingPage() {
 
   return (
     <>
-      {/* ===== STYLES ===== */}
+      {/* ===== STYLES (unchanged) ===== */}
       <style>{`
         .goog-te-banner-frame{display:none!important}
         body{top:0!important}
@@ -569,7 +560,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ===== TRUST & SECURITY BADGES ===== */}
+        {/* ===== TRUST & SECURITY BADGES (unchanged) ===== */}
         <section className="py-8 bg-white border-b border-brand-border">
           <div className="container mx-auto px-6 lg:px-12">
             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 text-xs font-semibold uppercase tracking-wider text-brand-slateText">

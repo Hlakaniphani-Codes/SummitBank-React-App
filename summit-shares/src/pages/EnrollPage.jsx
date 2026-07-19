@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { register } from '../api'; // <-- IMPORT
 
 const EnrollPage = () => {
   // ----- STEP STATE -----
@@ -146,7 +147,7 @@ const EnrollPage = () => {
     goToStep(step);
   };
 
-  // ----- FORM SUBMIT -----
+  // ----- FORM SUBMIT (FIXED) -----
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.terms) {
@@ -182,22 +183,14 @@ const EnrollPage = () => {
         accountType: formData.accountType,
         accountCurrency: formData.accountCurrency,
         docType: formData.docType,
-        pin: formData.pin,
+        pin: formData.pin.join(''), // convert to string
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         terms: formData.terms,
       };
 
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || data.error || 'Registration failed.');
-      }
+      // Use the imported register function
+      const data = await register(payload);
 
       if (data.token) {
         localStorage.setItem('token', data.token);
