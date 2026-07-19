@@ -1463,7 +1463,9 @@ const DashboardPage = () => {
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#0B0B0B', letterSpacing: 0.3 }}>
                       {(() => {
-                        const hour = new Date().getHours();
+                        // Auto-detect local time and choose greeting accordingly.
+                        const now = new Date();
+                        const hour = now.getHours();
                         const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
                         const name = currentUser?.firstName || 'there';
                         return `${greeting}, ${name}`;
