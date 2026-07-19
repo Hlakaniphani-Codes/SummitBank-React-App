@@ -1,6 +1,7 @@
-// Safely get API base URL – works in both Node and browser
-const API_BASE = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL)
-  ? process.env.REACT_APP_API_URL
+// Safely get API base URL – works in both Vite and Node
+// Vite uses import.meta.env, not process.env
+const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_APP_API_URL)
+  ? import.meta.env.VITE_APP_API_URL
   : 'http://localhost:5000/api';
 
 const getToken = () => localStorage.getItem('token');
