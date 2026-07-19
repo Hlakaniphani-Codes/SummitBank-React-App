@@ -28,7 +28,7 @@ import {
   getDocuments,
   generateStatement,
   changePassword,
-  submitSupportTicket, // new
+  submitSupportTicket,
 } from '../api';
 
 console.log('✅ API functions imported successfully');
@@ -485,11 +485,9 @@ const DashboardPage = () => {
   const markRead = async (id) => {
     try {
       await markNotificationRead(id);
-      // Update local state optimistically
       setNotifications(prev => prev.map(n =>
         n.id === id ? { ...n, unread: false } : n
       ));
-      // Refresh list to get accurate unread count
       await loadNotifications();
       showToast('Marked as read');
     } catch (e) {
@@ -503,7 +501,7 @@ const DashboardPage = () => {
     for (const id of unreadIds) {
       try { await markNotificationRead(id); } catch (e) {}
     }
-    await loadNotifications(); // refresh
+    await loadNotifications();
     showToast('All notifications marked as read');
   };
 
@@ -672,9 +670,8 @@ const DashboardPage = () => {
   console.log('🎨 Rendering DashboardPage JSX');
   return (
     <div className="font-sans antialiased bg-[#f4f2ef] text-[#1A1A1A] min-h-screen" style={{ overflowX: 'hidden' }}>
-      {/* ---- FULL STYLES (copied from your original) ---- */}
+      {/* ---- FULL STYLES (refined for a premium, trustworthy look) ---- */}
       <style>{`
-        /* All styles from the original dashboard – keep them */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', 'Montserrat', system-ui, sans-serif; background: #f4f2ef; color: #1A1A1A; overflow-x: hidden; -webkit-font-smoothing: antialiased; font-size: 14px; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -761,25 +758,86 @@ const DashboardPage = () => {
         .page-section { display: none; animation: fadeIn 0.3s ease; }
         .page-section.active { display: block; }
 
-        .card-box { background: #ffffff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.04); padding: 18px 20px 20px; transition: all 0.25s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03); }
-        .card-box:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.05); border-color: #d5cdc0; }
-        .card-box .card-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: #7a7a7a; display: flex; align-items: center; gap: 6px; }
+        /* --- Refined card styling --- */
+        .card-box {
+          background: #ffffff;
+          border-radius: 16px;
+          border: 1px solid rgba(0,0,0,0.05);
+          padding: 20px 22px 22px;
+          transition: all 0.25s ease;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .card-box:hover {
+          box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+          border-color: #d5cdc0;
+        }
+        .card-box .card-label {
+          font-size: 10px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.6px;
+          color: #7a7a7a;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
         .card-box .card-label i { color: #C9A84C; font-size: 12px; }
         .card-box .card-number { font-size: 12px; font-weight: 500; color: #4a4a4a; margin-top: 2px; letter-spacing: 0.5px; }
-        .card-box .card-balance { font-size: 24px; font-weight: 800; color: #0B0B0B; margin-top: 2px; letter-spacing: -0.5px; line-height: 1.2; }
-        .card-box .card-balance .currency { font-size: 15px; font-weight: 600; color: #5a5a5a; }
+        .card-box .card-balance {
+          font-size: 26px;
+          font-weight: 800;
+          color: #0B0B0B;
+          margin-top: 2px;
+          letter-spacing: -0.5px;
+          line-height: 1.2;
+        }
+        .card-box .card-balance .currency { font-size: 16px; font-weight: 600; color: #5a5a5a; }
         .card-box .card-balance .hidden-balance { font-size: 20px; letter-spacing: 4px; color: #5a5a5a; }
-        .card-box .card-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0ede8; flex-wrap: wrap; }
+        .card-box .card-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid #f0ede8;
+          flex-wrap: wrap;
+        }
         .card-box .card-actions span { font-size: 10px !important; }
-        .card-box .card-actions button { background: none; border: none; font-size: 11px; font-weight: 500; color: #5a5a5a; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; transition: all 0.2s; }
+        .card-box .card-actions button {
+          background: none;
+          border: none;
+          font-size: 11px;
+          font-weight: 500;
+          color: #5a5a5a;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          border-radius: 6px;
+          transition: all 0.2s;
+        }
         .card-box .card-actions button:hover { background: #f4f2ef; color: #C9A84C; }
         .card-box .card-actions button i { font-size: 11px; }
         .card-box .card-actions .copy-btn { color: #C9A84C; }
         .card-box .card-actions .copy-btn:hover { background: rgba(201,168,76,0.08); }
 
-        .total-balance-card { background: linear-gradient(135deg, #0B0B0B 0%, #1A1A1A 100%); border-radius: 16px; padding: 20px 24px; color: #fff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; border: 1px solid #2a2a2a; }
+        /* Total balance card - premium gradient */
+        .total-balance-card {
+          background: linear-gradient(135deg, #0B0B0B 0%, #1A1A1A 100%);
+          border-radius: 20px;
+          padding: 24px 28px;
+          color: #fff;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 16px;
+          border: 1px solid #2a2a2a;
+          box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+        }
         .total-balance-card .balance-left .label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.5); }
-        .total-balance-card .balance-left .amount { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; margin-top: 2px; }
+        .total-balance-card .balance-left .amount { font-size: 34px; font-weight: 800; letter-spacing: -0.5px; margin-top: 2px; }
         .total-balance-card .balance-left .amount .currency { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.5); }
         .total-balance-card .balance-right { display: flex; gap: 24px; }
         .total-balance-card .balance-right .stat { text-align: right; }
@@ -788,28 +846,58 @@ const DashboardPage = () => {
         .total-balance-card .balance-right .stat .stat-value.positive { color: #2D9B4E; }
         .total-balance-card .balance-right .stat .stat-value.negative { color: #D94352; }
 
-        .debit-card-preview { background: linear-gradient(145deg, #0B0B0B, #1A1A1A); border-radius: 16px; padding: 18px 20px 20px; color: #fff; position: relative; overflow: hidden; min-height: 150px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #2a2a2a; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .debit-card-preview::before { content: ''; position: absolute; top: -60px; right: -60px; width: 180px; height: 180px; border-radius: 50%; background: rgba(201,168,76,0.06); }
-        .debit-card-preview::after { content: ''; position: absolute; bottom: -40px; left: -40px; width: 120px; height: 120px; border-radius: 50%; background: rgba(201,168,76,0.04); }
+        /* Debit card preview - always inactive */
+        .debit-card-preview {
+          background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+          border-radius: 18px;
+          padding: 20px 24px 24px;
+          color: #fff;
+          position: relative;
+          overflow: hidden;
+          min-height: 160px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          border: 1px solid #2a2a2a;
+          box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+        .debit-card-preview::before { content: ''; position: absolute; top: -60px; right: -60px; width: 180px; height: 180px; border-radius: 50%; background: rgba(201,168,76,0.05); }
+        .debit-card-preview::after { content: ''; position: absolute; bottom: -40px; left: -40px; width: 120px; height: 120px; border-radius: 50%; background: rgba(201,168,76,0.03); }
         .debit-card-preview .card-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; }
         .debit-card-preview .card-top .card-type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.5); }
         .debit-card-preview .card-top .card-network { display: flex; align-items: center; gap: 6px; }
         .debit-card-preview .card-top .card-network i { font-size: 24px; color: #C9A84C; }
         .debit-card-preview .card-top .contactless { font-size: 16px; color: rgba(255,255,255,0.3); transform: rotate(90deg); }
-        .debit-card-preview .card-number-display { font-size: 16px; font-weight: 600; letter-spacing: 2px; color: #fff; margin-top: 6px; position: relative; z-index: 1; font-family: 'Inter', monospace; }
-        .debit-card-preview .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1; margin-top: 6px; }
+        .debit-card-preview .card-number-display { font-size: 18px; font-weight: 600; letter-spacing: 2px; color: #fff; margin-top: 6px; position: relative; z-index: 1; font-family: 'Inter', monospace; }
+        .debit-card-preview .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1; margin-top: 8px; }
         .debit-card-preview .card-bottom .card-holder { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px; }
         .debit-card-preview .card-bottom .card-expiry { font-size: 11px; color: rgba(255,255,255,0.5); }
         .debit-card-preview .card-bottom .card-expiry strong { color: rgba(255,255,255,0.8); }
-        .debit-card-preview .card-status { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #2D9B4E; background: rgba(45,155,78,0.12); padding: 2px 10px; border-radius: 20px; margin-top: 4px; position: relative; z-index: 1; width: fit-content; }
-        .debit-card-preview .card-status .dot { width: 5px; height: 5px; border-radius: 50%; background: #2D9B4E; display: inline-block; animation: pulse-dot 1.8s ease-in-out infinite; }
-        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .debit-card-preview .card-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 9px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #8a8a8a;
+          background: #e8e2d9;
+          padding: 2px 10px;
+          border-radius: 20px;
+          margin-top: 4px;
+          position: relative;
+          z-index: 1;
+          width: fit-content;
+        }
+        .debit-card-preview .card-status .dot { width: 5px; height: 5px; border-radius: 50%; background: #8a8a8a; display: inline-block; }
 
-        .cards-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-        .dashboard-stack { display: flex; flex-direction: column; gap: 20px; margin-top: 20px; }
-        .widgets-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .widget-box { background: #ffffff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.04); padding: 16px 18px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
-        .widget-box .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .cards-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+        .dashboard-stack { display: flex; flex-direction: column; gap: 24px; margin-top: 24px; }
+        .widgets-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        .widget-box { background: #ffffff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.05); padding: 18px 20px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .widget-box .widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
         .widget-box .widget-header h4 { font-size: 13px; font-weight: 700; color: #0B0B0B; }
         .widget-box .widget-header a { font-size: 11px; font-weight: 600; color: #C9A84C; text-decoration: none; transition: color 0.2s; cursor: pointer; }
         .widget-box .widget-header a:hover { color: #A8893A; }
@@ -846,26 +934,34 @@ const DashboardPage = () => {
         .invoice-show-more button { background: none; border: none; color: #C9A84C; font-weight: 600; font-size: 11px; cursor: pointer; transition: color 0.2s; padding: 4px 12px; border-radius: 6px; }
         .invoice-show-more button:hover { color: #A8893A; background: rgba(201,168,76,0.06); }
 
-        .quick-actions-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+        .quick-actions-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .quick-action-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 12px; border: 1px solid #f0ede8; background: #faf9f7; transition: all 0.2s; cursor: pointer; text-decoration: none; color: #1A1A1A; gap: 4px; }
         .quick-action-btn:hover { border-color: #C9A84C; background: #fff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
-        .quick-action-btn i { font-size: 16px; color: #C9A84C; }
-        .quick-action-btn span { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; color: #5a5a5a; }
+        .quick-action-btn i { font-size: 18px; color: #C9A84C; }
+        .quick-action-btn span { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; color: #5a5a5a; }
 
-        .insights-widget { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.04); padding: 18px 20px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); width: 100%; }
-        .insights-widget .insights-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
-        .insights-widget .insights-header h3 { font-size: 15px; font-weight: 700; color: #0B0B0B; }
-        .insights-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-        .stat-card { background: #faf9f7; border-radius: 12px; padding: 12px 14px; border: 1px solid #f0ede8; }
+        /* Removed insights widget – we keep only the financial snapshot */
+        .insights-widget {
+          background: #fff;
+          border-radius: 16px;
+          border: 1px solid rgba(0,0,0,0.04);
+          padding: 20px 22px 22px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+          width: 100%;
+        }
+        .insights-widget .insights-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+        .insights-widget .insights-header h3 { font-size: 16px; font-weight: 700; color: #0B0B0B; }
+        .insights-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+        .stat-card { background: #faf9f7; border-radius: 12px; padding: 14px 16px; border: 1px solid #f0ede8; }
         .stat-card .stat-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #8a8a8a; }
-        .stat-card .stat-value { font-size: 18px; font-weight: 800; color: #0B0B0B; margin-top: 2px; }
-        .stat-card .stat-value .currency { font-size: 12px; font-weight: 600; color: #5a5a5a; }
+        .stat-card .stat-value { font-size: 20px; font-weight: 800; color: #0B0B0B; margin-top: 2px; }
+        .stat-card .stat-value .currency { font-size: 13px; font-weight: 600; color: #5a5a5a; }
         .stat-card .stat-change { font-size: 10px; font-weight: 600; margin-top: 2px; }
         .stat-card .stat-change.positive { color: #2D9B4E; }
         .stat-card .stat-change.negative { color: #D94352; }
         .stat-card .stat-change i { margin-right: 2px; }
 
-        .bills-section { border-top: 1px solid #f0ede8; padding-top: 14px; }
+        .bills-section { border-top: 1px solid #f0ede8; padding-top: 16px; }
         .bills-section .bills-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .bills-section .bills-header h4 { font-size: 12px; font-weight: 700; color: #0B0B0B; }
         .bills-section .bills-header a { font-size: 10px; font-weight: 600; color: #C9A84C; text-decoration: none; cursor: pointer; }
@@ -885,6 +981,7 @@ const DashboardPage = () => {
         .bill-item .bill-status.upcoming { background: rgba(232,168,56,0.08); color: #E8A838; }
         .bill-item .bill-status.due { background: rgba(217,67,82,0.08); color: #D94352; }
 
+        /* Transaction table remains unchanged */
         .transactions-full-panel { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.04); padding: 18px 20px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
         .transactions-full-panel .panel-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
         .transactions-full-panel .panel-header h3 { font-size: 16px; font-weight: 700; color: #0B0B0B; }
@@ -943,10 +1040,8 @@ const DashboardPage = () => {
         .card-list-item .card-details .name { font-weight: 600; color: #1A1A1A; font-size: 13px; }
         .card-list-item .card-details .meta { font-size: 11px; color: #8a8a8a; }
         .card-list-item .card-status-badge { font-size: 9px; font-weight: 600; text-transform: uppercase; padding: 2px 10px; border-radius: 20px; }
-        .card-list-item .card-status-badge.active { background: rgba(45,155,78,0.08); color: #2D9B4E; }
-        .card-list-item .card-status-badge.blocked { background: rgba(217,67,82,0.08); color: #D94352; }
-        .card-list-item .card-status-badge.pending { background: rgba(232,168,56,0.08); color: #E8A838; }
-        .card-list-item .card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        /* Force inactive – we override via inline style in the render, so this class is not used for active/etc. */
+        .card-list-item .card-status-badge.inactive { background: #e8e2d9; color: #8a8a8a; }
 
         .payee-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f4f2ef; flex-wrap: wrap; gap: 8px; }
         .payee-item:last-child { border-bottom: none; }
@@ -1032,8 +1127,8 @@ const DashboardPage = () => {
         .btn-danger { background: #D94352; color: #fff; padding: 10px 24px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
         .btn-danger:hover { background: #c0392b; }
 
-        .page-header { margin-bottom: 20px; }
-        .page-header h2 { font-size: 22px; font-weight: 700; color: #0B0B0B; }
+        .page-header { margin-bottom: 24px; }
+        .page-header h2 { font-size: 24px; font-weight: 700; color: #0B0B0B; }
         .page-header p { font-size: 13px; color: #8a8a8a; margin-top: 2px; }
 
         .full-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; padding: 20px; opacity: 0; transition: opacity 0.3s ease; }
@@ -1413,23 +1508,10 @@ const DashboardPage = () => {
                     <div className="card-top">
                       <div>
                         <div className="card-type">{dashboardData.cards[0].card_type === 'credit' ? 'Credit Card' : 'Debit Card'}</div>
-                        {(() => {
-                          const apiStatus = dashboardData.cards[0]?.status;
-                          const isInactive = apiStatus && apiStatus !== 'active';
-
-                          // Spec: display an inactive/grey state on the dashboard card status.
-                          // Priority: show grey Inactive when status is not active; otherwise show Active.
-                          const showStatus = apiStatus === 'active' ? 'Active' : 'Inactive';
-                          const dotColor = apiStatus === 'active' ? '#2D9B4E' : '#8a8a8a';
-                          const bg = apiStatus === 'active' ? 'rgba(45,155,78,0.12)' : '#e8e2d9';
-                          const textColor = apiStatus === 'active' ? '#2D9B4E' : '#8a8a8a';
-
-                          return (
-                            <div className="card-status" style={{ color: textColor, background: bg }}>
-                              <span className="dot" style={{ background: dotColor }}></span> {showStatus}
-                            </div>
-                          );
-                        })()}
+                        {/* --- Force card status to "Inactive" (grey) as requested --- */}
+                        <div className="card-status" style={{ color: '#8a8a8a', background: '#e8e2d9' }}>
+                          <span className="dot" style={{ background: '#8a8a8a' }}></span> Inactive
+                        </div>
                       </div>
                       <div className="card-network">
                         <span className="contactless"><i className="fas fa-wifi"></i></span>
@@ -1440,7 +1522,7 @@ const DashboardPage = () => {
                     <div className="card-bottom">
                       <div>
                         <div className="card-holder">{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Account Holder'}</div>
-                        <div className="card-expiry">Status <strong>{dashboardData.cards[0].status}</strong></div>
+                        <div className="card-expiry">Status <strong>Inactive</strong></div>
                       </div>
                       <div className="text-right"><span className="text-[10px] text-white/30">{dashboardData.cards[0].card_network?.toUpperCase()}</span></div>
                     </div>
@@ -1461,41 +1543,9 @@ const DashboardPage = () => {
                 </div>
                 {renderInvoices()}
               </div>
-              <div className="widget-box">
-                <div className="widget-header">
-                  <h4><i className="fas fa-lightbulb text-brand-gold mr-2"></i> Smart Insights</h4>
-                  <a onClick={() => showToast('Smart insights refreshed')}>Refresh</a>
-                </div>
 
-                <div className="insights-list">
-                  <div className="insight-item">
-                    <div className="insight-icon"><i className="fas fa-wallet"></i></div>
-                    <div className="insight-content">
-                      <div className="insight-title">Spending Focus</div>
-                      <div className="insight-desc">Today’s check-in: try keeping discretionary spend under 15%.</div>
-                    </div>
-                  </div>
-
-                  <div className="insight-item">
-                    <div className="insight-icon"><i className="fas fa-piggy-bank"></i></div>
-                    <div className="insight-content">
-                      <div className="insight-title">Savings Boost</div>
-                      <div className="insight-desc">Set a weekly goal—small deposits compound fast.</div>
-                    </div>
-                  </div>
-
-                  <div className="insight-item">
-                    <div className="insight-icon"><i className="fas fa-gift"></i></div>
-                    <div className="insight-content">
-                      <div className="insight-title">Rewards Reminder</div>
-                      <div className="insight-desc">Use your card for eligible categories to maximize points.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="widgets-row">
+              {/* --- Removed "Smart Insights" widget entirely --- */}
+              {/* Instead, we keep only the monthly budget widget in the second column */}
               <div className="widget-box">
                 <div className="widget-header">
                   <h4><i className="fas fa-pie-chart text-brand-gold mr-2"></i> Monthly Budget</h4>
@@ -1503,6 +1553,9 @@ const DashboardPage = () => {
                 </div>
                 {renderBudget()}
               </div>
+            </div>
+
+            <div className="widgets-row">
               <div className="widget-box">
                 <div className="widget-header"><h4><i className="fas fa-bolt text-brand-gold mr-2"></i> Quick Actions</h4></div>
                 <div className="quick-actions-grid">
@@ -1514,6 +1567,7 @@ const DashboardPage = () => {
                   <a className="quick-action-btn" onClick={() => showToast('Rewards opened')}><i className="fas fa-gift"></i><span>Rewards</span></a>
                 </div>
               </div>
+              {/* Removed extra widget; we keep only two columns */}
             </div>
 
             <div className="insights-widget">
@@ -1640,7 +1694,8 @@ const DashboardPage = () => {
                     <div className="name">{card.cardholder_name || 'Card'}</div>
                     <div className="meta">**** {card.last4} • {card.card_type}</div>
                   </div>
-                  <span className={`card-status-badge ${card.status}`}>{card.status}</span>
+                  {/* --- Force inactive status --- */}
+                  <span className="card-status-badge" style={{ background: '#e8e2d9', color: '#8a8a8a' }}>Inactive</span>
                   <div className="card-actions">
                     <button className="btn-outline text-xs py-1 px-3" onClick={() => updateCardStatus(card.id, 'view')}>View</button>
                     <button className="btn-outline text-xs py-1 px-3" onClick={() => card.status === 'active' ? updateCardStatus(card.id, 'block') : updateCardStatus(card.id, 'activate')}>
