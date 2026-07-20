@@ -45,3 +45,158 @@
 [2m2026-07-17T14:53:53.727349Z[0m [32m INFO[0m Received 6 LSP edges from extension
 [2m2026-07-17T14:54:36.667120Z[0m [32m INFO[0m Received 6 LSP edges from extension
 [2m2026-07-17T14:59:15.435439Z[0m [32m INFO[0m Received 5 LSP edges from extension
+
+--- vexp daemon start at 2026-07-19T20:47:31.592Z ---
+[2m2026-07-19T20:47:31.975466Z[0m [32m INFO[0m license: home_dir=C:\Users\nokup (source=os)
+[2m2026-07-19T20:47:31.979478Z[0m [33m WARN[0m license: no valid JWT found, falling back to FREE plan (2000 nodes / 1 repo / 20 daily calls)
+[2m2026-07-19T20:47:32.000999Z[0m [32m INFO[0m Installed pre-commit hook
+[2m2026-07-19T20:47:32.003087Z[0m [32m INFO[0m Installed post-merge hook
+[2m2026-07-19T20:47:32.005134Z[0m [32m INFO[0m Installed post-checkout hook
+[2m2026-07-19T20:47:32.006869Z[0m [32m INFO[0m Created .vexp/.gitattributes
+[2m2026-07-19T20:47:32.008594Z[0m [32m INFO[0m Created .vexp/.gitignore (index.db excluded from git)
+[2m2026-07-19T20:47:32.008618Z[0m [32m INFO[0m vexp git hooks installed in C:\Users\nokup\OneDrive\Desktop\SummitFinTech
+[2m2026-07-19T20:47:32.033201Z[0m [32m INFO[0m Opening database at C:\Users\nokup\OneDrive\Desktop\SummitFinTech\.vexp\index.db
+[2m2026-07-19T20:47:32.172830Z[0m [32m INFO[0m SecurityFilter active — skipping built-in secret paths
+[2m2026-07-19T20:47:32.199854Z[0m [32m INFO[0m Manifest found, running incremental sync
+[2m2026-07-19T20:47:32.202965Z[0m [32m INFO[0m Running checkout sync
+[mcp] singleton already running (pidfile match)
+[2m2026-07-19T20:47:32.500287Z[0m [32m INFO[0m File watcher: monitorando C:\Users\nokup\OneDrive\Desktop\SummitFinTech (17 directories)
+[2m2026-07-19T20:47:32.503046Z[0m [32m INFO[0m LLM compression not configured — rule compressor active
+[2m2026-07-19T20:47:32.503642Z[0m [32m INFO[0m vexp-core daemon started, watching for changes
+[2m2026-07-19T20:47:52.625140Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-19T20:48:32.555309Z[0m [32m INFO[0m Consolidated 1 similar observations in session background
+[2m2026-07-19T20:48:32.561660Z[0m [32m INFO[0m Compressed session background: 4 → summary (0 tool_call observations pruned, 4 preserved)
+[2m2026-07-19T20:48:32.563805Z[0m [32m INFO[0m Session cleanup: 1 compressed, 0 deleted
+[2m2026-07-20T12:19:45.713067Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 2 file changes
+[2m2026-07-20T12:22:15.707647Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T12:22:38.758471Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-20T12:23:05.695025Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T12:23:23.859182Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-20T12:24:05.696822Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 2 file changes
+[2m2026-07-20T12:24:15.766106Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 2 file changes
+[2m2026-07-20T13:17:15.703297Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:17:21.071891Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-20T13:18:35.694293Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:18:36.743232Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-20T13:19:05.692179Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:19:07.372517Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-20T13:33:05.738176Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:33:07.766084Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-20T13:33:35.699529Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:33:36.847913Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-20T13:35:05.704440Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:46:45.691053Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 2 file changes
+[2m2026-07-20T13:46:55.646151Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-20T13:46:55.694670Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:47:35.690413Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:54:55.705779Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:54:57.875164Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T13:55:32.404236Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T13:55:35.688275Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:56:45.685358Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T13:56:48.191886Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:00:01.215642Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:00:05.692054Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T14:01:36.739178Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:03:12.442210Z[0m [32m INFO[0m Received 6 LSP edges from extension
+[2m2026-07-20T14:03:15.691073Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T14:03:52.457832Z[0m [32m INFO[0m Received 6 LSP edges from extension
+[2m2026-07-20T14:06:05.702481Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T14:06:06.594255Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:08:56.385007Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:09:05.695490Z[0m [32m INFO[0m Correlator: created 3 auto-observations from 4 file changes
+[2m2026-07-20T14:09:08.214150Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:09:15.699995Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 3 file changes
+[2m2026-07-20T14:09:18.180564Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:09:31.739634Z[0m [32m INFO[0m Received 6 LSP edges from extension
+[2m2026-07-20T14:09:35.718939Z[0m [32m INFO[0m Correlator: created 4 auto-observations from 4 file changes
+[2m2026-07-20T14:09:43.748042Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:09:45.693660Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 3 file changes
+[2m2026-07-20T14:09:55.723621Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:10:05.737094Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 2 file changes
+[2m2026-07-20T14:10:08.332522Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:10:15.693768Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T14:10:19.197675Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:10:25.703219Z[0m [32m INFO[0m Correlator: created 5 auto-observations from 5 file changes
+[2m2026-07-20T14:10:29.817236Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:10:35.692723Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 2 file changes
+[2m2026-07-20T14:10:40.066017Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:10:45.694824Z[0m [32m INFO[0m Correlator: created 3 auto-observations from 3 file changes
+[2m2026-07-20T14:10:50.845706Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:10:55.695480Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 2 file changes
+[2m2026-07-20T14:11:02.306008Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:11:05.698724Z[0m [32m INFO[0m Correlator: created 3 auto-observations from 3 file changes
+[2m2026-07-20T14:11:12.318685Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:11:14.198812Z[0m [32m INFO[0m Pattern detector: created 2 rule candidates
+[2m2026-07-20T14:11:15.701273Z[0m [32m INFO[0m Correlator: created 3 auto-observations from 3 file changes
+[2m2026-07-20T14:11:24.177776Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:11:25.694196Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 2 file changes
+[2m2026-07-20T14:11:35.685438Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T14:11:40.309875Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:11:45.697075Z[0m [32m INFO[0m Correlator: created 3 auto-observations from 3 file changes
+[2m2026-07-20T14:11:55.713419Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 2 file changes
+[2m2026-07-20T14:11:57.882798Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:12:05.695185Z[0m [32m INFO[0m Correlator: created 5 auto-observations from 5 file changes
+[2m2026-07-20T14:12:08.752307Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:12:15.700548Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 2 file changes
+[2m2026-07-20T14:12:25.525135Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:12:25.697490Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T14:12:46.259440Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:12:56.735081Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:13:06.964038Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:13:15.706498Z[0m [32m INFO[0m Correlator: created 6 auto-observations from 7 file changes
+[2m2026-07-20T14:13:17.585595Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:13:25.700462Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 9 file changes
+[2m2026-07-20T14:13:27.904764Z[0m [32m INFO[0m Received 3 LSP edges from extension
+[2m2026-07-20T14:13:35.700128Z[0m [32m INFO[0m Correlator: created 2 auto-observations from 9 file changes
+[2m2026-07-20T14:13:38.083085Z[0m [32m INFO[0m Received 4 LSP edges from extension
+[2m2026-07-20T14:13:45.699206Z[0m [32m INFO[0m Correlator: created 3 auto-observations from 9 file changes
+[2m2026-07-20T14:13:48.335231Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:13:55.706348Z[0m [32m INFO[0m Correlator: created 6 auto-observations from 7 file changes
+[2m2026-07-20T14:13:59.428410Z[0m [32m INFO[0m Received 6 LSP edges from extension
+[2m2026-07-20T14:14:05.700809Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 4 file changes
+[2m2026-07-20T14:14:10.182403Z[0m [32m INFO[0m Received 6 LSP edges from extension
+[2m2026-07-20T14:14:15.715502Z[0m [32m INFO[0m Correlator: created 3 auto-observations from 8 file changes
+[2m2026-07-20T14:14:23.847267Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:14:34.021500Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:14:46.034273Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:14:56.604445Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:15:11.632215Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:15:20.411866Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:15:32.248521Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:15:44.051960Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:15:54.880682Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:16:06.515637Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:16:18.122417Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:16:28.614077Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:16:41.830705Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:16:51.871147Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:17:05.897903Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:17:18.359213Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:17:30.165496Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:17:35.703396Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 2 file changes
+[2m2026-07-20T14:17:52.948267Z[0m [32m INFO[0m Received 7 LSP edges from extension
+[2m2026-07-20T14:17:55.695157Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 2 file changes
+[2m2026-07-20T14:18:05.700650Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 3 file changes
+[2m2026-07-20T14:18:25.698996Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[2m2026-07-20T14:18:34.942308Z[0m [32m INFO[0m Received 11 LSP edges from extension
+[2m2026-07-20T14:18:35.697634Z[0m [32m INFO[0m Correlator: created 1 auto-observations from 1 file changes
+[daemon] exited with code=null signal=SIGTERM
+
+--- vexp daemon start at 2026-07-20T14:21:20.929Z ---
+[2m2026-07-20T14:21:21.244871Z[0m [32m INFO[0m license: home_dir=C:\Users\nokup (source=os)
+[2m2026-07-20T14:21:21.245074Z[0m [33m WARN[0m license: no valid JWT found, falling back to FREE plan (2000 nodes / 1 repo / 20 daily calls)
+[2m2026-07-20T14:21:21.254147Z[0m [32m INFO[0m Updated vexp section in existing pre-commit hook
+[2m2026-07-20T14:21:21.272268Z[0m [32m INFO[0m Updated vexp section in existing post-merge hook
+[2m2026-07-20T14:21:21.295028Z[0m [32m INFO[0m Updated vexp section in existing post-checkout hook
+[2m2026-07-20T14:21:21.297193Z[0m [32m INFO[0m Created .vexp/.gitattributes
+[2m2026-07-20T14:21:21.297670Z[0m [32m INFO[0m vexp git hooks installed in C:\Users\nokup\OneDrive\Desktop\SummitFinTech
+[2m2026-07-20T14:21:21.299016Z[0m [32m INFO[0m Opening database at C:\Users\nokup\OneDrive\Desktop\SummitFinTech\.vexp\index.db
+[2m2026-07-20T14:21:21.384419Z[0m [32m INFO[0m SecurityFilter active — skipping built-in secret paths
+[2m2026-07-20T14:21:21.397879Z[0m [32m INFO[0m Manifest found, running incremental sync
+[2m2026-07-20T14:21:21.405924Z[0m [32m INFO[0m Running checkout sync
+[mcp] singleton already running (pidfile match)
+[2m2026-07-20T14:21:21.767311Z[0m [32m INFO[0m File watcher: monitorando C:\Users\nokup\OneDrive\Desktop\SummitFinTech (17 directories)
+[2m2026-07-20T14:21:21.767851Z[0m [32m INFO[0m LLM compression not configured — rule compressor active
+[2m2026-07-20T14:21:21.767884Z[0m [32m INFO[0m vexp-core daemon started, watching for changes
+[2m2026-07-20T14:21:30.349949Z[0m [32m INFO[0m Received 11 LSP edges from extension

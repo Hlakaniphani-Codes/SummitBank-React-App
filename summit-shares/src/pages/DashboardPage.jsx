@@ -1117,7 +1117,7 @@ const DashboardPage = () => {
         .faq-item .question i { transition: transform 0.2s; color: #C9A84C; }
         .faq-item .question.open i { transform: rotate(180deg); }
         .faq-item .answer { font-size: 12px; color: #5a5a5a; padding-top: 4px; display: none; line-height: 1.6; }
-        .faq-item .answer.open { display: block; }
+        .faq-item .question.open + .answer { display: block; }
 
         .toast-message { position: fixed; bottom: 30px; right: 30px; background: #0B0B0B; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 12px; font-weight: 500; box-shadow: 0 8px 30px rgba(0,0,0,0.15); z-index: 9999; display: flex; align-items: center; gap: 12px; transform: translateY(120px); opacity: 0; transition: all 0.4s ease; border-left: 3px solid #C9A84C; }
         .toast-message.show { transform: translateY(0); opacity: 1; }
