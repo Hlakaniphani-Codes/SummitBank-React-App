@@ -74,6 +74,10 @@ const DashboardPage = () => {
   const [showPayeeModal, setShowPayeeModal] = useState(false);
   const [showBillModal, setShowBillModal] = useState(false);
   const [showStatementModal, setShowStatementModal] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [accountSettingsModalOpen, setAccountSettingsModalOpen] = useState(false);
+  const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
 
   // Dropdowns
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -934,6 +938,14 @@ const DashboardPage = () => {
         .invoice-show-more button { background: none; border: none; color: #C9A84C; font-weight: 600; font-size: 11px; cursor: pointer; transition: color 0.2s; padding: 4px 12px; border-radius: 6px; }
         .invoice-show-more button:hover { color: #A8893A; background: rgba(201,168,76,0.06); }
 
+        .insights-list { display: flex; flex-direction: column; gap: 10px; }
+        .insight-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f4f2ef; }
+        .insight-item:last-child { border-bottom: none; }
+        .insight-item .insight-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(201,168,76,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #C9A84C; font-size: 14px; }
+        .insight-item .insight-content { flex: 1; }
+        .insight-item .insight-content .insight-title { font-weight: 600; font-size: 12px; color: #0B0B0B; }
+        .insight-item .insight-content .insight-desc { font-size: 11px; color: #6a6a6a; margin-top: 1px; line-height: 1.5; }
+
         .quick-actions-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .quick-action-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px; border-radius: 12px; border: 1px solid #f0ede8; background: #faf9f7; transition: all 0.2s; cursor: pointer; text-decoration: none; color: #1A1A1A; gap: 4px; }
         .quick-action-btn:hover { border-color: #C9A84C; background: #fff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
@@ -1415,12 +1427,12 @@ const DashboardPage = () => {
                 <i className="fas fa-chevron-down"></i>
               </div>
               <div className={`profile-dropdown-menu ${profileDropdownOpen ? 'open' : ''}`}>
-                <a className="menu-item" onClick={() => { showToast('Profile settings opened'); setProfileDropdownOpen(false); }}><i className="fas fa-user"></i> My Profile</a>
-                <a className="menu-item" onClick={() => { showToast('Account settings opened'); setProfileDropdownOpen(false); }}><i className="fas fa-sliders-h"></i> Account Settings</a>
+                <a className="menu-item" onClick={() => { setProfileModalOpen(true); setProfileDropdownOpen(false); }}><i className="fas fa-user"></i> My Profile</a>
+                <a className="menu-item" onClick={() => { setAccountSettingsModalOpen(true); setProfileDropdownOpen(false); }}><i className="fas fa-sliders-h"></i> Account Settings</a>
                 <a className="menu-item" onClick={() => { navigateTo('security'); setProfileDropdownOpen(false); }}><i className="fas fa-shield-halved"></i> Security</a>
-                <a className="menu-item" onClick={() => { showToast('Preferences opened'); setProfileDropdownOpen(false); }}><i className="fas fa-cog"></i> Preferences</a>
+                <a className="menu-item" onClick={() => { setPreferencesModalOpen(true); setProfileDropdownOpen(false); }}><i className="fas fa-cog"></i> Preferences</a>
                 <div className="divider"></div>
-                <a className="menu-item" onClick={() => { showToast('Help & support opened'); setProfileDropdownOpen(false); }}><i className="fas fa-question-circle"></i> Help & Support</a>
+                <a className="menu-item" onClick={() => { setHelpModalOpen(true); setProfileDropdownOpen(false); }}><i className="fas fa-question-circle"></i> Help & Support</a>
                 <a className="menu-item danger" onClick={() => { setSignOutModalOpen(true); setProfileDropdownOpen(false); }}><i className="fas fa-right-from-bracket"></i> Sign Out</a>
               </div>
             </div>
@@ -1537,25 +1549,47 @@ const DashboardPage = () => {
           )}
 
           <div className="dashboard-stack">
-            <div className="widgets-row">
-              <div className="widget-box">
-                <div className="widget-header">
-                  <h4><i className="fas fa-file-invoice text-brand-gold mr-2"></i> Recent Invoices</h4>
-                  <a onClick={() => setInvoiceModalOpen(true)}>View All</a>
+              <div className="widgets-row">
+                <div className="widget-box">
+                  <div className="widget-header">
+                    <h4><i className="fas fa-file-invoice text-brand-gold mr-2"></i> Recent Invoices</h4>
+                    <a onClick={() => setInvoiceModalOpen(true)}>View All</a>
+                  </div>
+                  {renderInvoices()}
                 </div>
-                {renderInvoices()}
-              </div>
+                <div className="widget-box">
+                  <div className="widget-header">
+                    <h4><i className="fas fa-lightbulb text-brand-gold mr-2"></i> Smart Insights</h4>
+                    <a onClick={() => showToast('Smart insights refreshed')}>Refresh</a>
+                  </div>
 
-              {/* --- Removed "Smart Insights" widget entirely --- */}
-              {/* Instead, we keep only the monthly budget widget in the second column */}
-              <div className="widget-box">
-                <div className="widget-header">
-                  <h4><i className="fas fa-pie-chart text-brand-gold mr-2"></i> Monthly Budget</h4>
-                  <a onClick={() => showToast('Budget details opened')}>Manage</a>
+                  <div className="insights-list">
+                    <div className="insight-item">
+                      <div className="insight-icon"><i className="fas fa-wallet"></i></div>
+                      <div className="insight-content">
+                        <div className="insight-title">Spending Focus</div>
+                        <div className="insight-desc">Today's check-in: try keeping discretionary spend under 15%.</div>
+                      </div>
+                    </div>
+
+                    <div className="insight-item">
+                      <div className="insight-icon"><i className="fas fa-piggy-bank"></i></div>
+                      <div className="insight-content">
+                        <div className="insight-title">Savings Boost</div>
+                        <div className="insight-desc">Set a weekly goal—small deposits compound fast.</div>
+                      </div>
+                    </div>
+
+                    <div className="insight-item">
+                      <div className="insight-icon"><i className="fas fa-gift"></i></div>
+                      <div className="insight-content">
+                        <div className="insight-title">Rewards Reminder</div>
+                        <div className="insight-desc">Use your card for eligible categories to maximize points.</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                {renderBudget()}
               </div>
-            </div>
 
             <div className="widgets-row">
               <div className="widget-box">
@@ -2120,6 +2154,167 @@ const DashboardPage = () => {
                 <tbody>{renderModalInvoices()}</tbody>
               </table>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ---- PROFILE MODAL: My Profile ---- */}
+      <div className={`modal-overlay ${profileModalOpen ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setProfileModalOpen(false); }}>
+        <div className="modal-box">
+          <div className="modal-title"><i className="fas fa-user text-brand-gold mr-2"></i> My Profile</div>
+          <div className="modal-sub">Manage your personal information</div>
+          <div className="space-y-4">
+            <div className="form-group">
+              <label>First Name</label>
+              <input type="text" defaultValue={currentUser?.firstName || ''} placeholder="First name" />
+            </div>
+            <div className="form-group">
+              <label>Last Name</label>
+              <input type="text" defaultValue={currentUser?.lastName || ''} placeholder="Last name" />
+            </div>
+            <div className="form-group">
+              <label>Email</label>
+              <input type="email" defaultValue={currentUser?.email || ''} placeholder="email@example.com" />
+            </div>
+            <div className="form-group">
+              <label>Phone</label>
+              <input type="tel" defaultValue={currentUser?.phone || ''} placeholder="+1 (555) 000-0000" />
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button className="btn-outline" onClick={() => setProfileModalOpen(false)}>Cancel</button>
+            <button className="btn-gold" onClick={() => { setProfileModalOpen(false); showToast('Profile updated successfully'); }}><i className="fas fa-save"></i> Save Changes</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ---- PROFILE MODAL: Account Settings ---- */}
+      <div className={`modal-overlay ${accountSettingsModalOpen ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setAccountSettingsModalOpen(false); }}>
+        <div className="modal-box">
+          <div className="modal-title"><i className="fas fa-sliders-h text-brand-gold mr-2"></i> Account Settings</div>
+          <div className="modal-sub">Configure your account preferences</div>
+          <div className="space-y-4">
+            <div className="form-group">
+              <label>Default Account</label>
+              <select>
+                {dashboardData?.accounts?.map(acc => (
+                  <option key={acc.id} value={acc.id}>{acc.account_type} - {acc.account_number}</option>
+                ))}
+                {(!dashboardData?.accounts?.length) && <option>No accounts available</option>}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Currency</label>
+              <select>
+                <option value="USD">USD - US Dollar</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="GBP">GBP - British Pound</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Time Zone</label>
+              <select>
+                <option value="America/New_York">Eastern Time (UTC-5)</option>
+                <option value="America/Chicago">Central Time (UTC-6)</option>
+                <option value="America/Denver">Mountain Time (UTC-7)</option>
+                <option value="America/Los_Angeles">Pacific Time (UTC-8)</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-brand-border">
+              <div>
+                <p className="font-semibold text-sm">Paperless Statements</p>
+                <p className="text-xs text-slate-400">Receive statements electronically</p>
+              </div>
+              <div className="toggle-switch active"><div className="toggle-knob"></div></div>
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button className="btn-outline" onClick={() => setAccountSettingsModalOpen(false)}>Cancel</button>
+            <button className="btn-gold" onClick={() => { setAccountSettingsModalOpen(false); showToast('Account settings saved'); }}><i className="fas fa-save"></i> Save Settings</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ---- PROFILE MODAL: Preferences ---- */}
+      <div className={`modal-overlay ${preferencesModalOpen ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setPreferencesModalOpen(false); }}>
+        <div className="modal-box">
+          <div className="modal-title"><i className="fas fa-cog text-brand-gold mr-2"></i> Preferences</div>
+          <div className="modal-sub">Customize your experience</div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between py-2 border-b border-brand-border">
+              <div>
+                <p className="font-semibold text-sm">Email Notifications</p>
+                <p className="text-xs text-slate-400">Receive alerts via email</p>
+              </div>
+              <div className="toggle-switch active"><div className="toggle-knob"></div></div>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-brand-border">
+              <div>
+                <p className="font-semibold text-sm">SMS Alerts</p>
+                <p className="text-xs text-slate-400">Receive text message alerts</p>
+              </div>
+              <div className="toggle-switch"><div className="toggle-knob"></div></div>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-brand-border">
+              <div>
+                <p className="font-semibold text-sm">Push Notifications</p>
+                <p className="text-xs text-slate-400">Browser push notifications</p>
+              </div>
+              <div className="toggle-switch active"><div className="toggle-knob"></div></div>
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="font-semibold text-sm">Marketing Communications</p>
+                <p className="text-xs text-slate-400">Tips, offers, and product updates</p>
+              </div>
+              <div className="toggle-switch"><div className="toggle-knob"></div></div>
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button className="btn-outline" onClick={() => setPreferencesModalOpen(false)}>Cancel</button>
+            <button className="btn-gold" onClick={() => { setPreferencesModalOpen(false); showToast('Preferences saved'); }}><i className="fas fa-save"></i> Save Preferences</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ---- PROFILE MODAL: Help & Support ---- */}
+      <div className={`modal-overlay ${helpModalOpen ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setHelpModalOpen(false); }}>
+        <div className="modal-box">
+          <div className="modal-title"><i className="fas fa-question-circle text-brand-gold mr-2"></i> Help & Support</div>
+          <div className="modal-sub">How can we help you today?</div>
+          <div className="space-y-4">
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I reset my password?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Go to Security Settings and use the Change Password form. You'll need your current password to set a new one.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I add a beneficiary?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Navigate to the Beneficiaries page and click "Add Beneficiary". Fill in the required details and save.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I block my card?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Go to the Cards page, find your card, and click the "Block" button to temporarily disable it.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I contact customer support?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Use the Support page to submit a ticket. Our team typically responds within 24 hours.</div>
+            </div>
+          </div>
+          <div className="modal-actions">
+            <button className="btn-outline" onClick={() => setHelpModalOpen(false)}>Close</button>
+            <button className="btn-gold" onClick={() => { navigateTo('support'); setHelpModalOpen(false); }}><i className="fas fa-headset"></i> Contact Support</button>
           </div>
         </div>
       </div>
