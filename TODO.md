@@ -37,3 +37,50 @@
 - Check icon (fa-check when accepted, fa-circle-check when not)
 - Links to Terms of Service and Privacy Policy
 
+---
+
+## ✅ Additional Enhancements Completed (Sept 2024)
+
+### 6. Account Number Formatting (Chase/Wells Fargo Style) ✅
+- **File**: `summit-shares/src/pages/DashboardPage.jsx`
+- Account numbers now show only last 4 digits with `...` prefix (e.g., `...6789`)
+- No hyphens displayed — stripped via regex
+- Label changed from "Current Account" to **"Checking Account"** for current/checking type
+- Labels show "Savings Account" for savings type
+
+### 7. Smart Insights Icons ✅
+- **File**: `summit-shares/src/pages/DashboardPage.jsx`
+- Spending Focus → `fa-wallet` icon
+- Savings Boost → `fa-piggy-bank` icon
+- Rewards Reminder → `fa-gift` icon
+- All icons wrap correctly in gold-tinted insight-icon containers
+
+### 8. Help & Support Modal (Profile Dropdown) ✅
+- **File**: `summit-shares/src/pages/DashboardPage.jsx`
+- **5 FAQs** with expand/collapse toggle:
+  - **Password Reset** → includes `support@summitshares.com` email
+  - **Lost or Stolen Card** → includes `fraud@summitshares.com` + phone + 24/7 monitoring
+  - **Add a Beneficiary** → includes `wires@summitshares.com` for international wires
+  - **Contact Support** → includes `info@summitshares.com` + phone + fraud escalation
+  - **Update Contact Info** → includes `accounts@summitshares.com`
+- All emails styled with brand gold color (`#C9A84C`)
+- "Contact Support" button navigates to Support page
+
+### 9. Expanded Banking FAQs with +1 276 257 6174 ✅
+- **File**: `summit-shares/src/pages/DashboardPage.jsx`
+- **12 comprehensive FAQ items** covering:
+  - Password Reset → `support@summitshares.com` + `+1 276 257 6174`
+  - Lost/Stolen Card → `fraud@summitshares.com` + `+1 276 257 6174` + 24/7 monitoring
+  - Check Account Balance → dashboard overview + individual accounts
+  - Transfer Funds → step-by-step internal transfer instructions
+  - Add Beneficiary → `wires@summitshares.com` + `+1 276 257 6174`
+  - Pay Bills → payee setup, one-time/recurring payments
+  - Block/Activate Card → Cards page + `+1 276 257 6174`
+  - Download Statements → Statements & Documents page
+  - Update Contact Info → Profile modal + `accounts@summitshares.com`
+  - Enable 2FA → Security Settings toggle
+  - Export Transactions → Transactions page CSV export
+  - Contact Support → `info@summitshares.com` + `+1 276 257 6174`
+- Modal subtitle now prominently features "Call us at +1 276 257 6174"
+- Scrollable FAQ container for better UX with 12 items
+

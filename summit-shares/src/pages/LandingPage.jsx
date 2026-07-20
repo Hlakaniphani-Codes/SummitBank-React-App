@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { login } from '../api'; // <-- IMPORT THE LOGIN FUNCTION
+import { login } from '../api';
 
-// ----- useToast hook (unchanged) -----
+// ----- useToast hook -----
 function useToast() {
   const [toast, setToast] = useState(null);
   const timeoutRef = useRef(null);
@@ -22,29 +22,16 @@ function useToast() {
   return { toast, showToast };
 }
 
-// ----- flagClass helper (unchanged) -----
+// ----- flagClass helper -----
 const flagClass = (code) => {
   const map = {
-    us: 'flag-icon-us',
-    gb: 'flag-icon-gb',
-    eu: 'flag-icon-eu',
-    jp: 'flag-icon-jp',
-    ca: 'flag-icon-ca',
-    ch: 'flag-icon-ch',
-    za: 'flag-icon-za',
-    au: 'flag-icon-au',
-    ng: 'flag-icon-ng',
-    ke: 'flag-icon-ke',
-    in: 'flag-icon-in',
-    br: 'flag-icon-br',
-    mx: 'flag-icon-mx',
-    ae: 'flag-icon-ae',
-    sg: 'flag-icon-sg',
-    kr: 'flag-icon-kr',
-    cn: 'flag-icon-cn',
-    se: 'flag-icon-se',
-    no: 'flag-icon-no',
-    dk: 'flag-icon-dk',
+    us: 'flag-icon-us', gb: 'flag-icon-gb', eu: 'flag-icon-eu',
+    jp: 'flag-icon-jp', ca: 'flag-icon-ca', ch: 'flag-icon-ch',
+    za: 'flag-icon-za', au: 'flag-icon-au', ng: 'flag-icon-ng',
+    ke: 'flag-icon-ke', in: 'flag-icon-in', br: 'flag-icon-br',
+    mx: 'flag-icon-mx', ae: 'flag-icon-ae', sg: 'flag-icon-sg',
+    kr: 'flag-icon-kr', cn: 'flag-icon-cn', se: 'flag-icon-se',
+    no: 'flag-icon-no', dk: 'flag-icon-dk',
   };
   return map[code] || '';
 };
@@ -53,21 +40,12 @@ const flagClass = (code) => {
 export default function LandingPage() {
   // --- Expandables ---
   const [expanded, setExpanded] = useState({
-    businessExpand: false,
-    cardsExpand: false,
-    savingsExpand: false,
-    mobileApp: false,
-    transparency: false,
-    blog1: false,
-    blog2: false,
-    blog3: false,
+    businessExpand: false, cardsExpand: false, savingsExpand: false,
+    mobileApp: false, transparency: false, blog1: false, blog2: false, blog3: false,
   });
 
   const toggleExpand = (id) =>
-    setExpanded((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   // --- Mobile menu ---
   const [menuOpen, setMenuOpen] = useState(false);
@@ -76,20 +54,14 @@ export default function LandingPage() {
     if (!menuOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    return () => { document.body.style.overflow = prev; };
   }, [menuOpen]);
 
   // --- Apply modal ---
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyProduct, setApplyProduct] = useState('');
   const [applyForm, setApplyForm] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-    product_interested_in: 'Business Account',
-    message: '',
+    full_name: '', email: '', phone: '', product_interested_in: 'Business Account', message: '',
   });
   const [applying, setApplying] = useState(false);
 
@@ -97,9 +69,7 @@ export default function LandingPage() {
     setApplyProduct(product || '');
     setApplyForm((prev) => {
       const next = { ...prev };
-      if (product) {
-        next.product_interested_in = product;
-      }
+      if (product) next.product_interested_in = product;
       return next;
     });
     setApplyOpen(true);
@@ -108,11 +78,9 @@ export default function LandingPage() {
   const closeApplyModal = () => setApplyOpen(false);
 
   // --- Login form ---
-  const [loginForm, setLoginForm] = useState({
-    identifier: '',
-    password: '',
-    saveUser: false,
-    showPassword: false,
+  const [loginForm, setLoginForm] = useState(() => {
+    const savedUser = localStorage.getItem('savedUsername') || '';
+    return { identifier: savedUser, password: '', saveUser: !!savedUser, showPassword: false };
   });
 
   const { toast, showToast } = useToast();
@@ -125,8 +93,7 @@ export default function LandingPage() {
       script.id = scriptId;
       script.type = 'text/javascript';
       script.async = true;
-      script.src =
-        'https://translate.google.com/translate_a/element.js?cb=googleTranslateInitCallback';
+      script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateInitCallback';
       document.head.appendChild(script);
     }
 
@@ -147,28 +114,26 @@ export default function LandingPage() {
       }
     };
 
-    return () => {
-      // no-op
-    };
+    return () => { /* cleanup not needed */ };
   }, []);
 
-  // ---- UPDATED: use the imported `login` function ----
+  // ---- UPDATED: use the imported `login` function with localStorage persistence ----
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     const identifier = loginForm.identifier.trim();
     const password = loginForm.password;
     if (!identifier || !password) return;
 
+    if (loginForm.saveUser) {
+      localStorage.setItem('savedUsername', identifier);
+    } else {
+      localStorage.removeItem('savedUsername');
+    }
+
     try {
       const data = await login(identifier, password);
-
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-
+      if (data.token) localStorage.setItem('token', data.token);
+      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
       showToast('✅ Login successful');
       window.location.href = '/dashboard';
     } catch (err) {
@@ -181,35 +146,24 @@ export default function LandingPage() {
 
   const handleApplySubmit = async (e) => {
     e.preventDefault();
-
     const { full_name, email, phone, product_interested_in, message } = applyForm;
     if (!full_name || !email || !phone || !product_interested_in) {
       showToast('❌ Please fill in all required fields.');
       return;
     }
-
     setApplying(true);
     try {
       showToast('Submitting...');
-
       const res = await fetch('/api/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name,
-          email,
-          phone,
-          product_interested_in,
-          message: message || null,
-        }),
+        body: JSON.stringify({ full_name, email, phone, product_interested_in, message: message || null }),
       });
-
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
         showToast(data.message || '❌ Application failed to submit.');
         return;
       }
-
       closeApplyModal();
       showToast("✅ Application submitted successfully! We'll contact you within 24 hours.");
     } catch (err) {
@@ -222,25 +176,12 @@ export default function LandingPage() {
   const toastNode = useMemo(() => {
     if (!toast) return null;
     return (
-      <div
-        id="toast"
-        style={{
-          position: 'fixed',
-          bottom: 30,
-          right: 30,
-          background: '#0B0B0B',
-          color: '#fff',
-          padding: '12px 24px',
-          borderRadius: 10,
-          fontSize: 13,
-          fontWeight: 500,
-          boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
-          zIndex: 99999,
-          borderLeft: '4px solid #C9A84C',
-          opacity: 1,
-          transform: 'translateY(0)',
-        }}
-      >
+      <div id="toast" style={{
+        position: 'fixed', bottom: 30, right: 30, background: '#0B0B0B', color: '#fff',
+        padding: '12px 24px', borderRadius: 10, fontSize: 13, fontWeight: 500,
+        boxShadow: '0 8px 30px rgba(0,0,0,0.2)', zIndex: 99999,
+        borderLeft: '4px solid #C9A84C', opacity: 1, transform: 'translateY(0)',
+      }}>
         <span>{toast}</span>
       </div>
     );
@@ -248,32 +189,50 @@ export default function LandingPage() {
 
   return (
     <>
-      {/* ===== STYLES (unchanged) ===== */}
       <style>{`
-        .goog-te-banner-frame{display:none!important}
-        body{top:0!important}
-        #google_translate_element{display:inline-block}
+        .goog-te-banner-frame{display:none!important} body{top:0!important} #google_translate_element{display:inline-block}
         #google_translate_element select.goog-te-combo{font-size:.65rem;font-weight:600;color:#1A1A1A;text-transform:uppercase;letter-spacing:.05em;background:transparent;border:1px solid #E8E2D9;border-radius:4px;padding:4px 8px;cursor:pointer;outline:none;font-family:'Inter',system-ui,sans-serif;min-width:120px}
         #google_translate_element select.goog-te-combo:hover{border-color:#C9A84C}
         .goog-te-gadget-simple{background:transparent!important;border:none!important;padding:0!important}
         .goog-te-gadget-simple .goog-te-menu-value{font-size:.65rem!important;font-weight:600!important;color:#1A1A1A!important;text-transform:uppercase!important;letter-spacing:.05em!important;background:transparent!important;border:none!important;padding:0!important}
         .goog-te-gadget-simple .goog-te-menu-value span{color:#1A1A1A!important}
         .goog-te-gadget-simple .goog-te-menu-value span:first-child{display:none!important}
-
         .mobile-menu{position:fixed;top:0;right:-100%;width:300px;height:100vh;background:#0B0B0B;z-index:1000;transition:right .4s cubic-bezier(.16,1,.3,1);padding:2.5rem}
-        .mobile-menu.open{right:0}
-        .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);z-index:999;opacity:0;visibility:hidden;transition:.3s}
+        .mobile-menu.open{right:0} .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);z-index:999;opacity:0;visibility:hidden;transition:.3s}
         .backdrop.visible{opacity:1;visibility:visible}
         .hero-split-bg{background-image:linear-gradient(rgba(11,11,11,0.60),rgba(11,11,11,0.85)),url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600&q=80');background-size:cover;background-position:center 30%}
         .ad-card{transition:transform .3s ease,box-shadow .3s ease}
         .ad-card:hover{transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,0.1)}
         .service-card{transition:all .3s ease}
         .service-card:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,0.06);border-color:#C9A84C}
-        .trust-badge{transition:all .3s ease}
-        .trust-badge:hover{transform:translateY(-2px)}
-
+        .trust-badge{transition:all .3s ease} .trust-badge:hover{transform:translateY(-2px)}
         .flag-icon{width:24px;height:16px;border-radius:2px;display:inline-block;vertical-align:middle;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,0.06)}
         .flag-icon-us{background-image:url('https://flagcdn.com/w20/us.png')}
+        .flag-icon-gb{background-image:url('https://flagcdn.com/w20/gb.png')}
+        .flag-icon-eu{background-image:url('https://flagcdn.com/w20/eu.png')}
+        .flag-icon-jp{background-image:url('https://flagcdn.com/w20/jp.png')}
+        .flag-icon-ca{background-image:url('https://flagcdn.com/w20/ca.png')}
+        .flag-icon-ch{background-image:url('https://flagcdn.com/w20/ch.png')}
+        .flag-icon-za{background-image:url('https://flagcdn.com/w20/za.png')}
+        .flag-icon-au{background-image:url('https://flagcdn.com/w20/au.png')}
+        .flag-icon-ng{background-image:url('https://flagcdn.com/w20/ng.png')}
+        .flag-icon-ke{background-image:url('https://flagcdn.com/w20/ke.png')}
+        .flag-icon-in{background-image:url('https://flagcdn.com/w20/in.png')}
+        .flag-icon-br{background-image:url('https://flagcdn.com/w20/br.png')}
+        .flag-icon-mx{background-image:url('https://flagcdn.com/w20/mx.png')}
+        .flag-icon-ae{background-image:url('https://flagcdn.com/w20/ae.png')}
+        .flag-icon-sg{background-image:url('https://flagcdn.com/w20/sg.png')}
+        .flag-icon-kr{background-image:url('https://flagcdn.com/w20/kr.png')}
+        .flag-icon-cn{background-image:url('https://flagcdn.com/w20/cn.png')}
+        .flag-icon-se{background-image:url('https://flagcdn.com/w20/se.png')}
+        .flag-icon-no{background-image:url('https://flagcdn.com/w20/no.png')}
+        .flag-icon-dk{background-image:url('https://flagcdn.com/w20/dk.png')}
+        .no-bullets{list-style:none;padding-left:0} html{scroll-behavior:smooth}
+        .logo-svg{height:40px;width:auto}
+        .gold-gradient{background:linear-gradient(135deg,#C9A84C 0%,#D9C06E 50%,#A8893A 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .corporate-pattern{background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C9A84C' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+        .review-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #C9A84C}
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;align-items:center;justify-content:center;padding:20px}
         .flag-icon-gb{background-image:url('https://flagcdn.com/w20/gb.png')}
         .flag-icon-eu{background-image:url('https://flagcdn.com/w20/eu.png')}
         .flag-icon-jp{background-image:url('https://flagcdn.com/w20/jp.png')}
@@ -462,15 +421,15 @@ export default function LandingPage() {
               </div>
 
               <div className="flex flex-wrap gap-3 pt-2">
-                <a
-                  href="#products"
+                <button
+                  onClick={() => showToast('📺 Opening our welcome video...')}
                   className="bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition inline-flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z" />
                   </svg>
                   Watch Video
-                </a>
+                </button>
                 <span className="text-white/50 text-xs flex items-center gap-2">
                   <svg className="w-4 h-4 text-brand-gold" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />

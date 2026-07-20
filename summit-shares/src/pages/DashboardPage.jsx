@@ -1495,13 +1495,18 @@ const DashboardPage = () => {
                   </div>
                 </div>
 
-                {dashboardData.accounts?.map((account) => (
-
+                {dashboardData.accounts?.map((account) => {
+                  // Format account number to Chase/Wells Fargo style: extract last 4 digits, no hyphens
+                  const rawNum = account.account_number || '';
+                  const last4 = rawNum.replace(/[^0-9]/g, '').slice(-4);
+                  const displayNum = last4 ? `...${last4}` : rawNum;
+                  const label = account.account_type === 'savings' ? 'Savings' : 'Checking';
+                  return (
                   <div key={account.id} className="card-box">
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="card-label"><i className={`fas ${account.account_type === 'savings' ? 'fa-piggy-bank' : 'fa-wallet'}`}></i> {account.account_type === 'savings' ? 'Savings Account' : 'Current Account'}</div>
-                        <div className="card-number">{account.account_number}</div>
+                        <div className="card-label"><i className={`fas ${account.account_type === 'savings' ? 'fa-piggy-bank' : 'fa-wallet'}`}></i> {label} Account</div>
+                        <div className="card-number">{displayNum}</div>
                       </div>
                       <button className="text-slate-400 hover:text-brand-gold text-sm" onClick={() => toggleBalance(account.account_type)}>
                         <i className={`fas ${balancesVisible[account.account_type] ? 'fa-eye' : 'fa-eye-slash'}`}></i>
@@ -1515,7 +1520,7 @@ const DashboardPage = () => {
                       <button className="copy-btn" onClick={() => copyText(account.account_number, 'Account number copied')}><i className="fas fa-copy"></i> Copy Acc.</button>
                     </div>
                   </div>
-                ))}
+                );})}
 
                 {dashboardData.cards?.length ? (
                   <div className="debit-card-preview">
@@ -2281,35 +2286,91 @@ const DashboardPage = () => {
       <div className={`modal-overlay ${helpModalOpen ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setHelpModalOpen(false); }}>
         <div className="modal-box">
           <div className="modal-title"><i className="fas fa-question-circle text-brand-gold mr-2"></i> Help & Support</div>
-          <div className="modal-sub">How can we help you today?</div>
-          <div className="space-y-4">
+          <div className="modal-sub">How can we help you today? Call us at <strong>+1 276 257 6174</strong></div>
+          <div className="space-y-4" style={{ maxHeight: '340px', overflowY: 'auto', paddingRight: '4px' }}>
             <div className="faq-item">
               <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
                 How do I reset my password?
                 <i className="fas fa-chevron-down"></i>
               </div>
-              <div className="answer">Go to Security Settings and use the Change Password form. You'll need your current password to set a new one.</div>
+              <div className="answer">Go to Security Settings and use the Change Password form. You will need your current password to set a new one. If you have forgotten your password, please email <a href="mailto:support@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>support@summitshares.com</a> or call <strong>+1 276 257 6174</strong> for assistance.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I report a lost or stolen card?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Call our fraud team immediately at <strong>+1 276 257 6174</strong> or email <a href="mailto:fraud@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>fraud@summitshares.com</a>. We monitor accounts 24/7 and will block your card instantly to prevent unauthorized use.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I check my account balance?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Your account balance is displayed at the top of the Dashboard. You can also view individual checking and savings account balances with the show/hide toggle. For recent transactions, visit the Transactions page.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I transfer funds between accounts?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Go to Fund Transfer in the sidebar. Select the source and destination accounts, enter the amount, and click Send Transfer. Internal transfers between your Summit Shares accounts are processed instantly.</div>
             </div>
             <div className="faq-item">
               <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
                 How do I add a beneficiary?
                 <i className="fas fa-chevron-down"></i>
               </div>
-              <div className="answer">Navigate to the Beneficiaries page and click "Add Beneficiary". Fill in the required details and save.</div>
+              <div className="answer">Navigate to the Beneficiaries page and click Add Beneficiary. Fill in the required details and save. For international wires, email <a href="mailto:wires@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>wires@summitshares.com</a> or call <strong>+1 276 257 6174</strong>.</div>
             </div>
             <div className="faq-item">
               <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
-                How do I block my card?
+                How do I pay bills through Summit Shares?
                 <i className="fas fa-chevron-down"></i>
               </div>
-              <div className="answer">Go to the Cards page, find your card, and click the "Block" button to temporarily disable it.</div>
+              <div className="answer">Go to Pay Bills in the sidebar. You can add a payee, set up a new bill, and make payments directly from your checking or savings account. Schedule one-time or recurring payments for utilities, subscriptions, and more.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I block or activate my card?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Visit the Cards page to view all your cards. Click Block to temporarily disable a card or Activate to re-enable it. You can also request a new card from the same page. For immediate assistance, call <strong>+1 276 257 6174</strong>.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I download account statements?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Go to Statements & Documents in the sidebar. You can view and download account statements and tax documents. Use the Generate button to create a new statement for a custom date range.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I update my contact information?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Click your profile avatar in the top-right corner and select My Profile. Edit your name, email, or phone number and save. To update your email address, email <a href="mailto:accounts@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>accounts@summitshares.com</a> with your request.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I enable two-factor authentication?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">Go to Security Settings in the sidebar. Under Two-Factor Authentication, toggle on Authenticator App, SMS Verification, or Email Verification. We recommend using at least one method for enhanced account security.</div>
+            </div>
+            <div className="faq-item">
+              <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
+                How do I export my transactions?
+                <i className="fas fa-chevron-down"></i>
+              </div>
+              <div className="answer">On the Transactions page, use the search and filter options to find specific transactions, then click the Export button to download a CSV file. The file includes date, description, type, amount, balance, and status for each transaction.</div>
             </div>
             <div className="faq-item">
               <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
                 How do I contact customer support?
                 <i className="fas fa-chevron-down"></i>
               </div>
-              <div className="answer">Use the Support page to submit a ticket. Our team typically responds within 24 hours.</div>
+              <div className="answer">You can reach us at <a href="mailto:info@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>info@summitshares.com</a> or call <strong>+1 276 257 6174</strong>. Our team typically responds within 24 hours. For urgent fraud concerns, email <a href="mailto:fraud@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>fraud@summitshares.com</a> or call the same number.</div>
             </div>
           </div>
           <div className="modal-actions">
