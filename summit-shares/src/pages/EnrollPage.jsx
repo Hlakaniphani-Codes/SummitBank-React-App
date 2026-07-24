@@ -390,7 +390,9 @@ const EnrollPage = () => {
     goToStep(step);
   };
 
-  // ----- FORM SUBMIT -----
+  // ============================================================
+  // UPDATED handleSubmit – redirects to home, not dashboard
+  // ============================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.terms) {
@@ -430,10 +432,9 @@ const EnrollPage = () => {
         terms: formData.terms,
       };
       const data = await register(payload);
-      if (data.token) localStorage.setItem('token', data.token);
-      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
-      alert('✅ Account created successfully!\n\nWelcome to Summit Shares!');
-      window.location.href = '/dashboard';
+      // ✅ Success – show message and redirect to home (not dashboard)
+      alert('✅ Your application has been submitted successfully and is awaiting administrator review.');
+      window.location.href = '/';
     } catch (err) {
       alert(err.message || 'Registration failed. Please try again.');
     } finally {

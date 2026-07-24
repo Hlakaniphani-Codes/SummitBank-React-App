@@ -135,7 +135,13 @@ export default function LandingPage() {
       if (data.token) localStorage.setItem('token', data.token);
       if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
       showToast('✅ Login successful');
-      window.location.href = '/dashboard';
+      // Redirect based on role: admin goes to admin dashboard, customers go to customer dashboard
+      const role = data.user?.role || 'customer';
+      if (role === 'admin' || role === 'super_admin') {
+        window.location.href = '/admin/dashboard';
+      } else {
+        window.location.href = '/dashboard';
+      }
     } catch (err) {
       showToast(err.message || 'Login error. Check backend connection.');
     }
@@ -384,6 +390,102 @@ export default function LandingPage() {
         </nav>
         <div className="mt-auto pt-6 border-t border-neutral-800 text-[11px] text-slate-500">
           <p>&copy; 2026 Summit Shares</p>
+        </div>
+      </div>
+
+      {/* ===== SERVICE NOTICE BANNER ===== */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+        borderBottom: '3px solid #C9A84C',
+        padding: '14px 20px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Decorative background elements */}
+        <div style={{
+          position: 'absolute',
+          top: '-20px',
+          right: '-20px',
+          width: '120px',
+          height: '120px',
+          borderRadius: '50%',
+          background: 'rgba(201,168,76,0.06)',
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: '-30px',
+          left: '30%',
+          width: '80px',
+          height: '80px',
+          borderRadius: '50%',
+          background: 'rgba(201,168,76,0.04)',
+        }} />
+        
+        <div className="container mx-auto px-6 lg:px-12 relative z-10">
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            flexWrap: 'wrap',
+          }}>
+            {/* Icon */}
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'rgba(201,168,76,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              border: '1px solid rgba(201,168,76,0.3)',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </div>
+            
+            {/* Text content */}
+            <div style={{ textAlign: 'center' }}>
+              <span style={{
+                display: 'inline-block',
+                background: 'rgba(201,168,76,0.15)',
+                color: '#C9A84C',
+                fontSize: '10px',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '1.5px',
+                padding: '2px 10px',
+                borderRadius: '4px',
+                marginBottom: '4px',
+              }}>
+                Service Notice
+              </span>
+              <p style={{
+                color: '#e0e0e0',
+                fontSize: '13px',
+                fontWeight: 500,
+                lineHeight: 1.5,
+                margin: 0,
+              }}>
+                <strong style={{ color: '#C9A84C', fontWeight: 700 }}>We've moved and everything is running smoothly.</strong>{' '}
+                Due to unexpected technical difficulties with our primary servers, we've temporarily migrated to our secure backup infrastructure to keep your experience uninterrupted.
+              </p>
+              <p style={{
+                color: '#a0a0a0',
+                fontSize: '11px',
+                fontWeight: 400,
+                margin: '2px 0 0 0',
+                lineHeight: 1.4,
+              }}>
+                Our team is actively working to resolve the issue. All your data and services remain fully intact —{' '}
+                <strong style={{ color: '#C9A84C' }}>you're in safe hands.</strong>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1411,7 +1513,7 @@ export default function LandingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              301 East Water Street, Charlottesville, VA 22904
+              111 Piccadilly, Manchester, UK
             </span>
             <span>
               <svg className="w-3 h-3 inline mr-1 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1423,7 +1525,7 @@ export default function LandingPage() {
               <svg className="w-3 h-3 inline mr-1 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
-              VIP Only
+              +44 7828707399
             </span>
           </div>
         </div>

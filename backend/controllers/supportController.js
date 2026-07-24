@@ -9,16 +9,16 @@ exports.submitTicket = async (req, res) => {
   }
 
   try {
-    const [result] = await pool.query(
+    const result = await pool.query(
       `INSERT INTO support_tickets (user_id, name, email, subject, message, status)
-       VALUES (?, ?, ?, ?, ?, 'open')`,
+       VALUES ($1, $2, $3, $4, $5, 'open') RETURNING id`,
       [userId, name, email, subject, message]
     );
 
     return res.status(201).json({
       success: true,
       message: 'Support ticket submitted successfully',
-      ticketId: result.insertId,
+      ticketId: result.rows[0].id,
     });
   } catch (error) {
     console.error('Support ticket error:', error);

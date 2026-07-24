@@ -18,17 +18,53 @@ const sessionsRoutes = require('./routes/sessions');
 const userRoutes = require('./routes/user');
 const notificationsRoutes = require('./routes/notifications');
 const supportRoutes = require('./routes/support');
+const adminRoutes = require('./routes/admin');
+const wireRoutes = require('./routes/wires');
+const chequeRoutes = require('./routes/cheques');
+const aiRoutes = require('./routes/ai');
+
+const http = require('http');
+const { Server } = require('socket.io');
+const { setIO, initSocket } = require('./services/eventEmitter');
 
 const app = express();
+const server = http.createServer(app);
 const isProduction = process.env.NODE_ENV === 'production';
-
-// ----- Security Middleware -----
-app.use(helmet());
 
 // ----- CORS -----
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
   : [];
+
+// ----- Socket.IO Real-Time Engine -----
+const io = new Server(server, {
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (!isProduction || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+});
+
+// Pass IO to the event emitter service
+setIO(io);
+
+// Handle socket connections
+io.on('connection', (socket) => {
+  initSocket(socket);
+});
+
+console.log('✅ WebSocket (Socket.IO) real-time engine initialized');
+
+// ----- Security Middleware -----
+app.use(helmet());
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -46,10 +82,10 @@ app.use(cors({
 // Logging
 app.use(morgan('combined'));
 
-// Rate limiting
+// Rate limiting - generous limits for development
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 60 * 1000,
+  max: 200,
   message: { success: false, message: 'Too many requests from this IP, please try again later.' },
 });
 app.use('/api', globalLimiter);
@@ -71,6 +107,10 @@ app.use('/api/sessions', sessionsRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/wires', wireRoutes);
+app.use('/api/cheques', chequeRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Application endpoint
 app.post('/api/apply', (req, res) => {
@@ -127,4 +167,4 @@ app.use((err, req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

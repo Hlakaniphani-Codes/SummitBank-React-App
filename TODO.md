@@ -1,86 +1,60 @@
-# SummitFinTech - Dashboard & Enroll Upgrade Completion
+# SummitBank Production Readiness - Progress Tracker
 
-## ✅ All Tasks Complete
+## Phase 1: Cleanup & Consolidation ✅
+- [x] Remove all MySQL files: `SummitDB.sql`, `mysqlStore.js`, `0001_add_bank_features.sql`
+- [x] Create unified PostgreSQL schema combining all 3 postgres SQL files
+- [x] Fix `authController.js` - added role column to login query and registration INSERT
+- [x] Remove duplicate/unused code
+- [x] Fix `postgresStore.js` - add role column to createUser, close module.exports
 
-### 1. Welcome Message (Top of Dashboard) ✅
-- **File**: `summit-shares/src/pages/DashboardPage.jsx`
-- Time-based greeting: "Good morning/afternoon/evening, {firstName}"
-- Subtitle: "Here's what's happening in your account right now."
-- "Trust & Insights" button with handshake icon
-- Located in a full-width card at the top of the cards-row
+## Phase 2: Core Services ✅
+- [x] Implement real Nodemailer email service (`backend/services/emailService.js`)
+- [x] Replace console.log placeholders in adminCustomers.js and adminNotifications.js
+- [x] Fix cheque deposit file upload handling (multer fields configured in routes)
+- [x] Create dedicated admin login page (`AdminLoginPage.jsx`)
+- [x] Update App.jsx to use AdminLoginPage instead of LandingPage
+- [x] Fix `supportController.js` MySQL syntax → PostgreSQL
+- [x] Create `backend/services/aiService.js` - AI Assistant with intent-based responses
+- [x] Create `backend/controllers/aiController.js` - chat & history endpoints
+- [x] Create `backend/routes/ai.js` - /api/ai/chat and /api/ai/history
+- [x] Mount AI routes in `server.js`
+- [x] Verify wire routes (`/api/wires`) and cheque routes (`/api/cheques`) already mounted
 
-### 2. Smart Insights Widget ✅
-- **File**: `summit-shares/src/pages/DashboardPage.jsx`
-- Three insight items:
-  - 💰 **Spending Focus** - "Today's check-in: try keeping discretionary spend under 15%."
-  - 🐷 **Savings Boost** - "Set a weekly goal—small deposits compound fast."
-  - 🎁 **Rewards Reminder** - "Use your card for eligible categories to maximize points."
-- "Refresh" action button in widget header
-- Bulb icon (fa-lightbulb)
-- Proper CSS styling for insight items
+## Phase 3: Database Schema ✅
+- [x] Create `0003_support_ai_schema.sql` with 7 new tables:
+  - [x] `support_tickets` - Customer support tickets
+  - [x] `applications` - Account applications with status tracking
+  - [x] `wire_transfers` - Full wire transfer records with admin review
+  - [x] `deposited_cheques` - Cheque deposits with front/back images
+  - [x] `login_history` - Authentication attempt tracking
+  - [x] `audit_logs` - Comprehensive audit trail with JSONB metadata
+  - [x] `ai_conversations` - AI chat history
 
-### 3. Card Status - Grey "Inactive" Styling ✅
-- **File**: `summit-shares/src/pages/DashboardPage.jsx`
-- Card preview shows "Inactive" with grey colors (#8a8a8a text on #e8e2d9 background)
-- Card list page also shows "Inactive" with grey styling
-- Hardcoded as per specification
+## Phase 4: Configuration & Documentation ⏳
+- [x] Create `.env.example`
+- [x] Create `backend/.env` with DATABASE_URL for local PostgreSQL
+- [x] Update `backend/config/db.js` to load dotenv and handle missing DATABASE_URL gracefully
+- [x] Frontend `api.js` already has local fallback (`http://localhost:5000/api`) - no changes needed
+- [x] Frontend `vite.config.js` already has proxy configured for `/api` → `localhost:5000` - no changes needed
+- [ ] Update `README_BACKEND_SETUP.md` for PostgreSQL
+- [ ] Verify all environment variables
 
-### 4. Trust & Insights Button ✅
-- **File**: `summit-shares/src/pages/DashboardPage.jsx`
-- Located in the welcome message card
-- Shows toast: "Welcome & trust settings updated"
+## Phase 5: Testing (PostgreSQL Required) ⏳
+- [ ] Install PostgreSQL on local machine
+- [ ] Create SummitDB database
+- [ ] Apply all 4 schema files in order:
+  1. `summit_schema.sql`
+  2. `0001_add_bank_features_postgres.sql`
+  3. `0002_add_admin_features.sql`
+  4. `0003_support_ai_schema.sql`
+- [ ] Start backend server and verify no errors
+- [ ] Test API endpoints with curl or browser
+- [ ] Run frontend build
+- [ ] Verify SPA fallback works
 
-### 5. Round "Accept All TS & CS" Button (Enroll) ✅
-- **File**: `summit-shares/src/pages/EnrollPage.jsx`
-- Circular button (rounded-full, w-12 h-12)
-- Toggles green on acceptance with shadow effect
-- Check icon (fa-check when accepted, fa-circle-check when not)
-- Links to Terms of Service and Privacy Policy
-
----
-
-## ✅ Additional Enhancements Completed (Sept 2024)
-
-### 6. Account Number Formatting (Chase/Wells Fargo Style) ✅
-- **File**: `summit-shares/src/pages/DashboardPage.jsx`
-- Account numbers now show only last 4 digits with `...` prefix (e.g., `...6789`)
-- No hyphens displayed — stripped via regex
-- Label changed from "Current Account" to **"Checking Account"** for current/checking type
-- Labels show "Savings Account" for savings type
-
-### 7. Smart Insights Icons ✅
-- **File**: `summit-shares/src/pages/DashboardPage.jsx`
-- Spending Focus → `fa-wallet` icon
-- Savings Boost → `fa-piggy-bank` icon
-- Rewards Reminder → `fa-gift` icon
-- All icons wrap correctly in gold-tinted insight-icon containers
-
-### 8. Help & Support Modal (Profile Dropdown) ✅
-- **File**: `summit-shares/src/pages/DashboardPage.jsx`
-- **5 FAQs** with expand/collapse toggle:
-  - **Password Reset** → includes `support@summitshares.com` email
-  - **Lost or Stolen Card** → includes `fraud@summitshares.com` + phone + 24/7 monitoring
-  - **Add a Beneficiary** → includes `wires@summitshares.com` for international wires
-  - **Contact Support** → includes `info@summitshares.com` + phone + fraud escalation
-  - **Update Contact Info** → includes `accounts@summitshares.com`
-- All emails styled with brand gold color (`#C9A84C`)
-- "Contact Support" button navigates to Support page
-
-### 9. Expanded Banking FAQs with +1 276 257 6174 ✅
-- **File**: `summit-shares/src/pages/DashboardPage.jsx`
-- **12 comprehensive FAQ items** covering:
-  - Password Reset → `support@summitshares.com` + `+1 276 257 6174`
-  - Lost/Stolen Card → `fraud@summitshares.com` + `+1 276 257 6174` + 24/7 monitoring
-  - Check Account Balance → dashboard overview + individual accounts
-  - Transfer Funds → step-by-step internal transfer instructions
-  - Add Beneficiary → `wires@summitshares.com` + `+1 276 257 6174`
-  - Pay Bills → payee setup, one-time/recurring payments
-  - Block/Activate Card → Cards page + `+1 276 257 6174`
-  - Download Statements → Statements & Documents page
-  - Update Contact Info → Profile modal + `accounts@summitshares.com`
-  - Enable 2FA → Security Settings toggle
-  - Export Transactions → Transactions page CSV export
-  - Contact Support → `info@summitshares.com` + `+1 276 257 6174`
-- Modal subtitle now prominently features "Call us at +1 276 257 6174"
-- Scrollable FAQ container for better UX with 12 items
-
+## Remaining Issues
+- [ ] PostgreSQL not installed locally (requires EDB installer or winget)
+- [ ] SMTP credentials needed for email service
+- [x] `.env` file created with local PostgreSQL connection string (update credentials as needed)
+- [ ] Admin seed script needed for initial admin user creation
+- [ ] Frontend AI chat UI component not created

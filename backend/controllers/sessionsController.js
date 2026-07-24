@@ -1,7 +1,9 @@
 const {
   listSessions,
   signOutSession,
+  createNotification,
 } = require('../utils/postgresStore');
+const { emitToUser } = require('../services/eventEmitter');
 
 exports.getSessions = async (req, res) => {
   const userId = req.userId;
@@ -20,6 +22,13 @@ exports.signOut = async (req, res) => {
 
   try {
     await signOutSession(userId, sessionId);
+    
+    const now = new Date().toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true
+    });
+    await createNotification(userId, 'Session Signed Out', `A device session was signed out on ${now}. If you did not authorize this, please contact support immediately.`);
+    
     return res.json({ success: true, message: 'Signed out' });
   } catch (error) {
     console.error('Sign out error:', error);

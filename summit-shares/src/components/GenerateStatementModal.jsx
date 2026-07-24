@@ -27,6 +27,28 @@ const GenerateStatementModal = ({ isOpen, onClose, onSuccess, accounts }) => {
     try {
       await generateStatement({ accountId, periodStart, periodEnd });
       onSuccess();
+      // Generate CSV download
+      const selectedAccount = accounts.find(acc => String(acc.id) === String(accountId));
+      const accountLabel = selectedAccount
+        ? `${selectedAccount.account_type} - ${selectedAccount.account_number}`
+        : `Account #${accountId}`;
+      const csvRows = [
+        ['"Summit Bank - Account Statement"'],
+        [`"Account: ${accountLabel}"`],
+        [`"Period: ${periodStart} to ${periodEnd}"`],
+        [''],
+        ['"Date"','"Description"','"Amount"','"Balance"'],
+      ];
+      const csvString = csvRows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `statement-${accountId}-${periodStart}-to-${periodEnd}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       onClose();
     } catch (err) {
       setError(err.message || 'Failed to generate statement');

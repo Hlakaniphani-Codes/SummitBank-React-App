@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRealtime } from '../hooks/useRealtime';
 
 // ---- Import Modal Components ----
 import AddBeneficiaryModal from '../components/AddBeneficiaryModal';
@@ -29,6 +30,11 @@ import {
   generateStatement,
   changePassword,
   submitSupportTicket,
+  getWires,
+  createWire,
+  getWireDetails,
+  getChequeDeposits,
+  depositCheque,
 } from '../api';
 
 console.log('✅ API functions imported successfully');
@@ -86,6 +92,9 @@ const DashboardPage = () => {
   // Transaction filters
   const [txSearch, setTxSearch] = useState('');
   const [txFilter, setTxFilter] = useState('all');
+
+  // ---- TRANSFER FORM STATE ----
+  const [selectedFromAccount, setSelectedFromAccount] = useState('');
 
   // ---- TOAST ----
   const showToast = (msg) => {
@@ -473,10 +482,83 @@ const DashboardPage = () => {
     loadTransactions();
   }, [txSearch, txFilter]);
 
-  // Notifications (initial load)
+  // Initialize WebSocket real-time connection
+  const { connected, onEvent } = useRealtime();
+
+  // Notifications (initial load) - real time via WebSocket
   useEffect(() => {
     loadNotifications();
   }, []);
+
+  // Listen for real-time notification events
+  useEffect(() => {
+    const unsub = onEvent('new-notification', (notification) => {
+      console.log('🔔 Real-time notification received:', notification);
+      // Add to existing notifications
+      setNotifications(prev => [{
+        id: notification.id,
+        title: notification.title,
+        desc: notification.description,
+        time: new Date(notification.created_at || Date.now()).toLocaleString(),
+        unread: true,
+        icon: 'info',
+        iconClass: 'fa-bell',
+      }, ...prev]);
+    });
+    return unsub;
+  }, [onEvent]);
+
+  // Listen for real-time balance updates
+  useEffect(() => {
+    const unsub = onEvent('balance-update', (data) => {
+      console.log('💰 Real-time balance update received:', data);
+      if (data.accounts) {
+        setDashboardData(prev => {
+          if (!prev) return prev;
+          const updatedAccounts = prev.accounts?.map(acc => {
+            const updated = data.accounts.find(u => u.id === acc.id);
+            return updated ? { ...acc, balance: updated.balance } : acc;
+          });
+          const newTotal = updatedAccounts?.reduce((sum, acc) => sum + Number(acc.balance || 0), 0) || 0;
+          return { ...prev, accounts: updatedAccounts, totalBalance: newTotal };
+        });
+      }
+    });
+    return unsub;
+  }, [onEvent]);
+
+  // Listen for real-time transaction events
+  useEffect(() => {
+    const unsub = onEvent('new-transaction', (transaction) => {
+      console.log('💳 Real-time transaction received:', transaction);
+      setTransactions(prev => [transaction, ...prev]);
+      // Also refresh dashboard to get updated stats
+      refreshDashboard();
+    });
+    return unsub;
+  }, [onEvent, refreshDashboard]);
+
+  // Listen for real-time card updates
+  useEffect(() => {
+    const unsub = onEvent('card-update', () => {
+      console.log('🃏 Real-time card update received');
+      refreshDashboard();
+    });
+    return unsub;
+  }, [onEvent, refreshDashboard]);
+
+  // Fallback polling: refresh dashboard every 30s if WebSocket is disconnected
+  // This ensures data stays up-to-date even when real-time fails
+  useEffect(() => {
+    const POLL_INTERVAL = 30000; // 30 seconds
+    let intervalId = setInterval(() => {
+      if (!connected) {
+        console.log('🔄 WebSocket disconnected - polling fallback refresh');
+        refreshDashboard();
+      }
+    }, POLL_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, [connected, refreshDashboard]);
 
   // Load data for other pages when active
   useEffect(() => {
@@ -648,10 +730,95 @@ const DashboardPage = () => {
     );
   };
 
+  // ---- WIRE TRANSFER STATE ----
+  const [wires, setWires] = useState([]);
+  const [wireFormOpen, setWireFormOpen] = useState(false);
+  const [loadingWires, setLoadingWires] = useState(false);
+
+  // ---- CHEQUE DEPOSIT STATE ----
+  const [chequeDeposits, setChequeDeposits] = useState([]);
+  const [chequeFormOpen, setChequeFormOpen] = useState(false);
+  const [loadingCheques, setLoadingCheques] = useState(false);
+
+  // ---- LOAD WIRES ----
+  const loadWires = async () => {
+    setLoadingWires(true);
+    try {
+      const data = await getWires();
+      setWires(data.wires || []);
+    } catch (err) {
+      console.error('❌ Load wires failed:', err);
+      setWires([]);
+    } finally {
+      setLoadingWires(false);
+    }
+  };
+
+  // ---- LOAD CHEQUE DEPOSITS ----
+  const loadChequeDeposits = async () => {
+    setLoadingCheques(true);
+    try {
+      const data = await getChequeDeposits();
+      setChequeDeposits(data.deposits || []);
+    } catch (err) {
+      console.error('❌ Load cheques failed:', err);
+      setChequeDeposits([]);
+    } finally {
+      setLoadingCheques(false);
+    }
+  };
+
+  // ---- HANDLE WIRE TRANSFER ----
+  const handleCreateWire = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    const payload = {
+      fromAccountId: data.get('fromAccount'),
+      beneficiaryName: data.get('beneficiaryName'),
+      beneficiaryBank: data.get('beneficiaryBank'),
+      beneficiaryAccount: data.get('beneficiaryAccount'),
+      beneficiaryRouting: data.get('beneficiaryRouting'),
+      beneficiaryAddress: data.get('beneficiaryAddress'),
+      swiftCode: data.get('swiftCode'),
+      amount: Number(data.get('amount')),
+      currency: data.get('currency'),
+      fee: Number(data.get('fee')) || 25,
+      description: data.get('description'),
+    };
+    try {
+      const result = await createWire(payload);
+      showToast(result.message || 'Wire transfer initiated');
+      form.reset();
+      setWireFormOpen(false);
+      loadWires();
+    } catch (err) {
+      showToast(err.message || 'Failed to create wire transfer');
+    }
+  };
+
+  // ---- HANDLE CHEQUE DEPOSIT ----
+  const handleDepositCheque = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    try {
+      const result = await depositCheque(formData);
+      showToast(result.message || 'Cheque deposited successfully');
+      form.reset();
+      setChequeFormOpen(false);
+      loadChequeDeposits();
+    } catch (err) {
+      showToast(err.message || 'Failed to deposit cheque');
+    }
+  };
+
   // ---- NAV ITEMS ----
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'fa-th-large' },
     { id: 'transfer', label: 'Fund Transfer', icon: 'fa-arrow-right-arrow-left' },
+    { id: 'wires', label: 'Wire Transfers', icon: 'fa-building-columns' },
+    { id: 'cheques', label: 'Deposit Cheques', icon: 'fa-circle-dollar-to-slot' },
     { id: 'cards', label: 'Cards', icon: 'fa-credit-card', badge: dashboardData?.cards?.length || 0 },
     { id: 'transactions', label: 'Transactions', icon: 'fa-receipt' },
     { id: 'bills', label: 'Pay Bills', icon: 'fa-file-invoice-dollar' },
@@ -672,6 +839,26 @@ const DashboardPage = () => {
   // RENDER
   // =============================================================
   console.log('🎨 Rendering DashboardPage JSX');
+  // ---- REFRESH NOTIFICATIONS (used after any action) ----
+  const refreshNotifications = async () => {
+    try {
+      const data = await getNotifications();
+      console.log('🔔 Notifications refreshed:', data);
+      const formatted = data.notifications?.map(n => ({
+        id: n.id,
+        title: n.title,
+        desc: n.description,
+        time: new Date(n.created_at).toLocaleString(),
+        unread: !n.is_read,
+        icon: 'info',
+        iconClass: 'fa-bell',
+      })) || [];
+      setNotifications(formatted);
+    } catch (e) {
+      console.error('❌ Notifications refresh error:', e);
+    }
+  };
+
   return (
     <div className="font-sans antialiased bg-[#f4f2ef] text-[#1A1A1A] min-h-screen" style={{ overflowX: 'hidden' }}>
       {/* ---- FULL STYLES (refined for a premium, trustworthy look) ---- */}
@@ -1527,9 +1714,15 @@ const DashboardPage = () => {
                     <div className="card-top">
                       <div>
                         <div className="card-type">{dashboardData.cards[0].card_type === 'credit' ? 'Credit Card' : 'Debit Card'}</div>
-                        {/* --- Force card status to "Inactive" (grey) as requested --- */}
-                        <div className="card-status" style={{ color: '#8a8a8a', background: '#e8e2d9' }}>
-                          <span className="dot" style={{ background: '#8a8a8a' }}></span> Inactive
+                        {/* --- Show actual card status from database --- */}
+                        <div className="card-status" style={{
+                          color: dashboardData.cards[0].status === 'active' ? '#2D9B4E' : '#8a8a8a',
+                          background: dashboardData.cards[0].status === 'active' ? 'rgba(45,155,78,0.12)' : '#e8e2d9'
+                        }}>
+                          <span className="dot" style={{
+                            background: dashboardData.cards[0].status === 'active' ? '#2D9B4E' : '#8a8a8a'
+                          }}></span>
+                          {dashboardData.cards[0].status.charAt(0).toUpperCase() + dashboardData.cards[0].status.slice(1)}
                         </div>
                       </div>
                       <div className="card-network">
@@ -1541,7 +1734,9 @@ const DashboardPage = () => {
                     <div className="card-bottom">
                       <div>
                         <div className="card-holder">{currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Account Holder'}</div>
-                        <div className="card-expiry">Status <strong>Inactive</strong></div>
+                        <div className="card-expiry">Status <strong style={{
+                          color: dashboardData.cards[0].status === 'active' ? '#2D9B4E' : '#8a8a8a'
+                        }}>{dashboardData.cards[0].status.charAt(0).toUpperCase() + dashboardData.cards[0].status.slice(1)}</strong></div>
                       </div>
                       <div className="text-right"><span className="text-[10px] text-white/30">{dashboardData.cards[0].card_network?.toUpperCase()}</span></div>
                     </div>
@@ -1648,6 +1843,193 @@ const DashboardPage = () => {
           </div>
         </div>
 
+        {/* ---- PAGE: WIRE TRANSFERS ---- */}
+        <div className={`page-section ${activePage === 'wires' ? 'active' : ''}`}>
+          <div className="page-header">
+            <h2>Wire Transfers</h2>
+            <p>Send international and domestic wire transfers</p>
+          </div>
+          <div className="transfer-form-grid">
+            <div className="card-box">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-bold text-brand-dark text-sm">Wire Transfer History</h4>
+                <button className="btn-primary text-xs py-1.5 px-3" onClick={() => setWireFormOpen(!wireFormOpen)}>
+                  <i className="fas fa-plus"></i> New Wire
+                </button>
+              </div>
+              {loadingWires ? (
+                <div className="text-slate-400 text-sm py-6">Loading wires...</div>
+              ) : wires.length === 0 ? (
+                <div className="text-slate-400 text-sm py-6">No wire transfers found.</div>
+              ) : (
+                wires.map(w => (
+                  <div key={w.id} className="transfer-item">
+                    <div className="transfer-details">
+                      <div className="desc">{w.beneficiary_name}</div>
+                      <div className="meta">{w.beneficiary_bank} • {w.status}</div>
+                    </div>
+                    <div className={`transfer-amount ${w.status === 'completed' ? 'in' : 'out'}`}>
+                      {formatCurrency(w.amount)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="card-box">
+              <h4 className="font-bold text-brand-dark mb-4 text-sm">
+                {wireFormOpen ? 'New Wire Transfer' : 'Wire Transfer Form'}
+              </h4>
+              {wireFormOpen ? (
+                <form onSubmit={handleCreateWire}>
+                  <div className="space-y-4">
+                    <div className="form-group">
+                      <label>From Account</label>
+                      <select name="fromAccount" required>
+                        {dashboardData?.accounts?.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.account_type} - {formatCurrency(acc.balance)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Beneficiary Name</label>
+                      <input type="text" name="beneficiaryName" placeholder="John Doe" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Beneficiary Bank</label>
+                      <input type="text" name="beneficiaryBank" placeholder="Bank of America" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Beneficiary Account Number</label>
+                      <input type="text" name="beneficiaryAccount" placeholder="123456789" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Routing Number</label>
+                      <input type="text" name="beneficiaryRouting" placeholder="021000021" />
+                    </div>
+                    <div className="form-group">
+                      <label>SWIFT Code (International)</label>
+                      <input type="text" name="swiftCode" placeholder="BOFAUS3N" />
+                    </div>
+                    <div className="form-group">
+                      <label>Beneficiary Address</label>
+                      <input type="text" name="beneficiaryAddress" placeholder="123 Main St, City, Country" />
+                    </div>
+                    <div className="form-group">
+                      <label>Amount</label>
+                      <input type="number" step="0.01" min="1" name="amount" placeholder="0.00" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Currency</label>
+                      <select name="currency">
+                        <option value="USD">USD - US Dollar</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="GBP">GBP - British Pound</option>
+                        <option value="CAD">CAD - Canadian Dollar</option>
+                        <option value="MXN">MXN - Mexican Peso</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Fee ($)</label>
+                      <input type="number" step="0.01" name="fee" defaultValue="25" />
+                    </div>
+                    <div className="form-group">
+                      <label>Description</label>
+                      <input type="text" name="description" placeholder="Invoice payment" />
+                    </div>
+                    <button type="submit" className="btn-gold w-full justify-center">
+                      <i className="fas fa-paper-plane"></i> Submit Wire Transfer
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="text-slate-400 text-sm py-6 text-center">
+                  Click "New Wire" to initiate a wire transfer. Wire transfers are subject to review and may take 1-3 business days to process.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ---- PAGE: DEPOSIT CHEQUES ---- */}
+        <div className={`page-section ${activePage === 'cheques' ? 'active' : ''}`}>
+          <div className="page-header">
+            <h2>Deposit Cheques</h2>
+            <p>Deposit cheques using your mobile device or view deposit history</p>
+          </div>
+          <div className="transfer-form-grid">
+            <div className="card-box">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-bold text-brand-dark text-sm">Deposit History</h4>
+                <button className="btn-primary text-xs py-1.5 px-3" onClick={() => setChequeFormOpen(!chequeFormOpen)}>
+                  <i className="fas fa-plus"></i> New Deposit
+                </button>
+              </div>
+              {loadingCheques ? (
+                <div className="text-slate-400 text-sm py-6">Loading deposits...</div>
+              ) : chequeDeposits.length === 0 ? (
+                <div className="text-slate-400 text-sm py-6">No cheque deposits found.</div>
+              ) : (
+                chequeDeposits.map(d => (
+                  <div key={d.id} className="transfer-item">
+                    <div className="transfer-details">
+                      <div className="desc">{d.description || 'Cheque Deposit'}</div>
+                      <div className="meta">{d.created_at ? new Date(d.created_at).toLocaleDateString() : ''} • {d.status}</div>
+                    </div>
+                    <div className="transfer-amount in">
+                      {formatCurrency(d.amount)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="card-box">
+              <h4 className="font-bold text-brand-dark mb-4 text-sm">
+                {chequeFormOpen ? 'Deposit a Cheque' : 'Cheque Deposit'}
+              </h4>
+              {chequeFormOpen ? (
+                <form onSubmit={handleDepositCheque} encType="multipart/form-data">
+                  <div className="space-y-4">
+                    <div className="form-group">
+                      <label>Deposit To Account</label>
+                      <select name="accountId" required>
+                        {dashboardData?.accounts?.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.account_type} - {formatCurrency(acc.balance)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Amount</label>
+                      <input type="number" step="0.01" min="0.01" name="amount" placeholder="0.00" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Cheque Front Image</label>
+                      <input type="file" name="front" accept="image/*" capture="environment" />
+                    </div>
+                    <div className="form-group">
+                      <label>Cheque Back Image</label>
+                      <input type="file" name="back" accept="image/*" capture="environment" />
+                    </div>
+                    <div className="form-group">
+                      <label>Description (Optional)</label>
+                      <input type="text" name="description" placeholder="e.g., Birthday cheque" />
+                    </div>
+                    <p className="text-xs text-slate-400 mb-4">
+                      By depositing this cheque, you agree to our terms and confirm that the cheque is payable to you.
+                    </p>
+                    <button type="submit" className="btn-gold w-full justify-center">
+                      <i className="fas fa-circle-dollar-to-slot"></i> Submit Deposit
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="text-slate-400 text-sm py-6 text-center">
+                  Click "New Deposit" to deposit a cheque. Take a photo of the front and back of your endorsed cheque.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* ---- PAGE: FUND TRANSFER ---- */}
         <div className={`page-section ${activePage === 'transfer' ? 'active' : ''}`}>
           <div className="page-header">
@@ -1661,7 +2043,7 @@ const DashboardPage = () => {
                 <div className="space-y-4">
                   <div className="form-group">
                     <label>From Account</label>
-                    <select name="fromAccount" required>
+                    <select name="fromAccount" required onChange={(e) => setSelectedFromAccount(e.target.value)}>
                       {dashboardData?.accounts?.map(acc => (
                         <option key={acc.id} value={acc.id}>{acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number}) - {formatCurrency(acc.balance)}</option>
                       ))}
@@ -1670,7 +2052,7 @@ const DashboardPage = () => {
                   <div className="form-group">
                     <label>To Account</label>
                     <select name="toAccount" required>
-                      {dashboardData?.accounts?.map(acc => (
+                      {dashboardData?.accounts?.filter(acc => String(acc.id) !== String(selectedFromAccount)).map(acc => (
                         <option key={acc.id} value={acc.id}>{acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number})</option>
                       ))}
                     </select>
@@ -1735,8 +2117,13 @@ const DashboardPage = () => {
                     <div className="name">{card.cardholder_name || 'Card'}</div>
                     <div className="meta">**** {card.last4} • {card.card_type}</div>
                   </div>
-                  {/* --- Force inactive status --- */}
-                  <span className="card-status-badge" style={{ background: '#e8e2d9', color: '#8a8a8a' }}>Inactive</span>
+                  {/* --- Show actual card status from database --- */}
+                  <span className="card-status-badge" style={{
+                    background: card.status === 'active' ? 'rgba(45,155,78,0.12)' : '#e8e2d9',
+                    color: card.status === 'active' ? '#2D9B4E' : '#8a8a8a'
+                  }}>
+                    {card.status.charAt(0).toUpperCase() + card.status.slice(1)}
+                  </span>
                   <div className="card-actions">
                     <button className="btn-outline text-xs py-1 px-3" onClick={() => updateCardStatus(card.id, 'view')}>View</button>
                     <button className="btn-outline text-xs py-1 px-3" onClick={() => card.status === 'active' ? updateCardStatus(card.id, 'block') : updateCardStatus(card.id, 'activate')}>
@@ -2286,21 +2673,21 @@ const DashboardPage = () => {
       <div className={`modal-overlay ${helpModalOpen ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setHelpModalOpen(false); }}>
         <div className="modal-box">
           <div className="modal-title"><i className="fas fa-question-circle text-brand-gold mr-2"></i> Help & Support</div>
-          <div className="modal-sub">How can we help you today? Call us at <strong>+1 276 257 6174</strong></div>
+          <div className="modal-sub">How can we help you today?</div>
           <div className="space-y-4" style={{ maxHeight: '340px', overflowY: 'auto', paddingRight: '4px' }}>
             <div className="faq-item">
               <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
                 How do I reset my password?
                 <i className="fas fa-chevron-down"></i>
               </div>
-              <div className="answer">Go to Security Settings and use the Change Password form. You will need your current password to set a new one. If you have forgotten your password, please email <a href="mailto:support@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>support@summitshares.com</a> or call <strong>+1 276 257 6174</strong> for assistance.</div>
+                <div className="answer">Go to Security Settings and use the Change Password form. You will need your current password to set a new one. If you have forgotten your password, please email <a href="mailto:support@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>support@summitshares.com</a> for assistance.</div>
             </div>
             <div className="faq-item">
               <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
                 How do I report a lost or stolen card?
                 <i className="fas fa-chevron-down"></i>
               </div>
-              <div className="answer">Call our fraud team immediately at <strong>+1 276 257 6174</strong> or email <a href="mailto:fraud@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>fraud@summitshares.com</a>. We monitor accounts 24/7 and will block your card instantly to prevent unauthorized use.</div>
+                <div className="answer">Call our fraud team immediately or email <a href="mailto:fraud@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>fraud@summitshares.com</a>. We monitor accounts 24/7 and will block your card instantly to prevent unauthorized use.</div>
             </div>
             <div className="faq-item">
               <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
@@ -2321,7 +2708,7 @@ const DashboardPage = () => {
                 How do I add a beneficiary?
                 <i className="fas fa-chevron-down"></i>
               </div>
-              <div className="answer">Navigate to the Beneficiaries page and click Add Beneficiary. Fill in the required details and save. For international wires, email <a href="mailto:wires@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>wires@summitshares.com</a> or call <strong>+1 276 257 6174</strong>.</div>
+                <div className="answer">Navigate to the Beneficiaries page and click Add Beneficiary. Fill in the required details and save. For international wires, email <a href="mailto:wires@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>wires@summitshares.com</a>.</div>
             </div>
             <div className="faq-item">
               <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
@@ -2335,7 +2722,7 @@ const DashboardPage = () => {
                 How do I block or activate my card?
                 <i className="fas fa-chevron-down"></i>
               </div>
-              <div className="answer">Visit the Cards page to view all your cards. Click Block to temporarily disable a card or Activate to re-enable it. You can also request a new card from the same page. For immediate assistance, call <strong>+1 276 257 6174</strong>.</div>
+                <div className="answer">Visit the Cards page to view all your cards. Click Block to temporarily disable a card or Activate to re-enable it. You can also request a new card from the same page.</div>
             </div>
             <div className="faq-item">
               <div className="question" onClick={(e) => e.currentTarget.classList.toggle('open')}>
@@ -2370,7 +2757,7 @@ const DashboardPage = () => {
                 How do I contact customer support?
                 <i className="fas fa-chevron-down"></i>
               </div>
-              <div className="answer">You can reach us at <a href="mailto:info@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>info@summitshares.com</a> or call <strong>+1 276 257 6174</strong>. Our team typically responds within 24 hours. For urgent fraud concerns, email <a href="mailto:fraud@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>fraud@summitshares.com</a> or call the same number.</div>
+                <div className="answer">You can reach us at <a href="mailto:info@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>info@summitshares.com</a>. Our team typically responds within 24 hours. For urgent fraud concerns, email <a href="mailto:fraud@summitshares.com" style={{color: '#C9A84C', fontWeight: 600}}>fraud@summitshares.com</a>.</div>
             </div>
           </div>
           <div className="modal-actions">

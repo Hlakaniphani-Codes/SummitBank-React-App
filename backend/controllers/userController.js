@@ -2,7 +2,9 @@ const {
   getUserProfile,
   updateUserProfile,
   changePassword,
+  createNotification,
 } = require('../utils/postgresStore');
+const { emitToUser } = require('../services/eventEmitter');
 
 exports.getProfile = async (req, res) => {
   const userId = req.userId;
@@ -36,6 +38,16 @@ exports.changePassword = async (req, res) => {
   }
   try {
     await changePassword(userId, oldPassword, newPassword);
+    
+    const now = new Date().toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true
+    });
+    await createNotification(userId, 'Password Changed', `Your account password was changed on ${now}. If you did not make this change, please contact support immediately.`);
+    
+    // Emit real-time event
+    emitToUser(userId, 'security-update', { action: 'password-changed', timestamp: now });
+    
     return res.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
     console.error('Change password error:', error);

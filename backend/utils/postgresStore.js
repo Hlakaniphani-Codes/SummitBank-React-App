@@ -1,9 +1,20 @@
 const pool = require('../config/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { emitNotification, emitBalanceUpdate, emitTransaction, emitToUser, emitToAdmins } = require('../services/eventEmitter');
 
 const ensureSchema = async () => {
   // no-op
+};
+
+// ============================================================
+// FIXED: Helper to generate unique transaction ID
+// ============================================================
+const generateTransactionId = () => {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 10);
+  return `TXN-${timestamp}-${random}`;
 };
 
 const hashPassword = async (password) => bcrypt.hash(password, 10);
@@ -47,8 +58,10 @@ const createUser = async (payload) => {
         first_name, middle_name, last_name, date_of_birth, email, phone,
         street, apartment, city, state, zip, country,
         occupation, employer, income_range, source_of_funds,
-        ssn_encrypted, doc_type, pin_hash, password_hash, terms_accepted
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        ssn_encrypted, doc_type, pin_hash, password_hash, role, terms_accepted,
+        status, login_enabled, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
+        'pending', false, false)
       RETURNING id`,
       [
         payload.firstName,
@@ -71,44 +84,18 @@ const createUser = async (payload) => {
         payload.docType || 'passport',
         pinHash,
         passwordHash,
+        'customer',
         Boolean(payload.terms ? 1 : 0),
       ]
     );
 
     const userId = userResult.rows[0].id;
 
-    await client.query(
-      `INSERT INTO accounts (user_id, account_number, account_type, currency, balance, routing_number, status, opened_at)
-       VALUES ($1, $2, 'checking', $3, 0.00, '021000021', 'active', CURRENT_DATE)`,
-      [userId, `CHK-${1000 + Math.floor(Math.random() * 9000)}`, payload.accountCurrency || 'USD']
-    );
-
-    await client.query(
-      `INSERT INTO accounts (user_id, account_number, account_type, currency, balance, routing_number, apy, status, opened_at)
-       VALUES ($1, $2, 'savings', $3, 0.00, '021000021', 4.25, 'active', CURRENT_DATE)`,
-      [userId, `SAV-${1000 + Math.floor(Math.random() * 9000)}`, payload.accountCurrency || 'USD']
-    );
-
-    await client.query(
-      `INSERT INTO cards (
-        user_id, account_id, card_type, card_network, last4,
-        expiry_month, expiry_year, cardholder_name, status
-      ) VALUES (
-        $1,
-        (SELECT id FROM accounts WHERE user_id = $1 AND account_type = 'checking' ORDER BY id LIMIT 1),
-        'debit',
-        'visa',
-        '4829',
-        12,
-        2028,
-        $2,
-        'active'
-      )`,
-      [userId, `${payload.firstName} ${payload.lastName}`.trim()]
-    );
+    // Note: Accounts and cards are NOT auto-created on signup.
+    // The customer must be approved through an application, then admin creates accounts/cards manually.
 
     await client.query('COMMIT');
-    return { id: userId, first_name: payload.firstName, last_name: payload.lastName, email: payload.email };
+    return { id: userId, first_name: payload.firstName, last_name: payload.lastName, email: payload.email, status: 'pending' };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -214,18 +201,34 @@ const getTransactions = async (userId, filters = {}) => {
   return result.rows;
 };
 
-// ---------- TRANSFERS ----------
+// ============================================================
+// FIXED: transferMoney - uses generateTransactionId()
+// ============================================================
 const transferMoney = async (userId, payload) => {
   await ensureSchema();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    if (Number(payload.fromAccountId) === Number(payload.toAccountId)) {
+      throw new Error('Source and destination accounts must be different');
+    }
+
+    // Check if source account is on hold or frozen
+    const holdCheck = await client.query(
+      'SELECT status FROM accounts WHERE id = $1 AND user_id = $2 FOR UPDATE',
+      [payload.fromAccountId, userId]
+    );
+    if (holdCheck.rows.length === 0) throw new Error('Source account not found');
+    if (holdCheck.rows[0].status === 'inactive' || holdCheck.rows[0].status === 'frozen') {
+      throw new Error('Source account is on hold or frozen. Transfers cannot be processed.');
+    }
+
     const fromAccRows = await client.query(
       'SELECT balance, id FROM accounts WHERE id = $1 AND user_id = $2 AND status = $3 FOR UPDATE',
       [payload.fromAccountId, userId, 'active']
     );
-    if (fromAccRows.rows.length === 0) throw new Error('Source account not found');
+    if (fromAccRows.rows.length === 0) throw new Error('Source account not found or not active');
 
     const toAccRows = await client.query(
       'SELECT id, user_id, balance FROM accounts WHERE id = $1 AND status = $2 FOR UPDATE',
@@ -245,23 +248,90 @@ const transferMoney = async (userId, payload) => {
       [amount, payload.toAccountId]
     );
 
-    const txId = `TXN-${Date.now()}`;
+    // Use UNIQUE transaction IDs for each leg of the transfer
+    const debitTxId = generateTransactionId();
+    const creditTxId = generateTransactionId();
     const date = payload.date || new Date().toISOString().slice(0, 10);
 
     await client.query(
       `INSERT INTO transactions (user_id, account_id, transaction_id, amount, description, type, balance_after, status, transaction_date)
        VALUES ($1, $2, $3, $4, $5, 'transfer', $6, 'completed', $7)`,
-      [userId, payload.fromAccountId, txId, -amount, payload.description || 'Transfer', Number(fromAccRows.rows[0].balance) - amount, date]
+      [userId, payload.fromAccountId, debitTxId, -amount, payload.description || 'Transfer', Number(fromAccRows.rows[0].balance) - amount, date]
     );
 
     await client.query(
       `INSERT INTO transactions (user_id, account_id, transaction_id, amount, description, type, balance_after, status, transaction_date)
        VALUES ($1, $2, $3, $4, $5, 'transfer', $6, 'completed', $7)`,
-      [toAccRows.rows[0].user_id, payload.toAccountId, txId, amount, payload.description || 'Transfer', Number(toAccRows.rows[0].balance) + amount, date]
+      [toAccRows.rows[0].user_id, payload.toAccountId, creditTxId, amount, payload.description || 'Transfer', Number(toAccRows.rows[0].balance) + amount, date]
     );
 
+    // Get account details for notification
+    const fromAccountRows = await client.query(
+      'SELECT account_number, account_type FROM accounts WHERE id = $1',
+      [payload.fromAccountId]
+    );
+    const toAccountRows = await client.query(
+      'SELECT account_number, account_type FROM accounts WHERE id = $1',
+      [payload.toAccountId]
+    );
+    const fromAccount = fromAccountRows.rows[0];
+    const toAccount = toAccountRows.rows[0];
+    
+    const nowFormatted = new Date().toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true
+    });
+
+    // Notification for sender (debit)
+    await client.query(
+      `INSERT INTO notifications (user_id, title, description)
+       VALUES ($1, 'Transfer Sent', $2)`,
+      [userId, `$${amount.toFixed(2)} transferred from your ${fromAccount.account_type} account (${fromAccount.account_number}) to ${toAccount.account_type} account (${toAccount.account_number}) on ${nowFormatted}. Reference: ${debitTxId}.`]
+    );
+
+    // Notification for receiver (credit) - only if different user
+    const toUserId = toAccRows.rows[0].user_id;
+    if (Number(toUserId) !== Number(userId)) {
+      await client.query(
+        `INSERT INTO notifications (user_id, title, description)
+         VALUES ($1, 'Transfer Received', $2)`,
+        [toUserId, `$${amount.toFixed(2)} received into your ${toAccount.account_type} account (${toAccount.account_number}) from ${fromAccount.account_type} account on ${nowFormatted}. Reference: ${creditTxId}.`]
+      );
+    } else {
+      // Same user - internal transfer notification
+      await client.query(
+        `INSERT INTO notifications (user_id, title, description)
+         VALUES ($1, 'Transfer Received', $2)`,
+        [userId, `$${amount.toFixed(2)} received into your ${toAccount.account_type} account (${toAccount.account_number}) from your ${fromAccount.account_type} account on ${nowFormatted}. Reference: ${creditTxId}.`]
+      );
+    }
+
     await client.query('COMMIT');
-    return { transactionId: txId };
+
+    // Emit real-time balance updates to both sender and receiver
+    const [senderAccounts, receiverAccounts] = await Promise.all([
+      query('SELECT id, account_number, account_type, balance, routing_number, apy FROM accounts WHERE user_id = $1', [userId]),
+      query('SELECT id, account_number, account_type, balance, routing_number, apy FROM accounts WHERE user_id = $1', [toUserId])
+    ]);
+    
+    // Use emitToUser instead of emitBalanceUpdate for internal transfers
+    emitToUser(userId, 'balance-update', { accounts: senderAccounts.rows });
+    emitToUser(userId, 'new-transaction', { 
+      transaction_id: debitTxId, amount: -amount, type: 'transfer', status: 'completed',
+      description: payload.description || 'Transfer', 
+      transaction_date: new Date().toISOString().slice(0, 10)
+    });
+    
+    if (Number(toUserId) !== Number(userId)) {
+      emitToUser(toUserId, 'balance-update', { accounts: receiverAccounts.rows });
+      emitToUser(toUserId, 'new-transaction', {
+        transaction_id: creditTxId, amount: amount, type: 'transfer', status: 'completed',
+        description: payload.description || 'Transfer Received',
+        transaction_date: new Date().toISOString().slice(0, 10)
+      });
+    }
+
+    return { transactionId: debitTxId };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -317,6 +387,20 @@ const requestCard = async (userId, accountId, cardType = 'debit', cardNetwork = 
     RETURNING id`,
     [userId, accountId, cardType, cardNetwork, last4, expiryMonth, expiryYear, cardholderName]
   );
+
+  // Notify admins about new card request
+  const userInfo = await query('SELECT first_name, last_name, email FROM users WHERE id = $1', [userId]);
+  if (userInfo.rows.length > 0) {
+    const u = userInfo.rows[0];
+    emitToAdmins('admin-notification', {
+      id: Date.now(),
+      title: 'New Card Request',
+      description: `${u.first_name} ${u.last_name} (${u.email}) has requested a new ${cardType} card.`,
+      is_read: false,
+      created_at: new Date().toISOString(),
+      targetUserId: userId
+    });
+  }
 
   return { id: result.rows[0].id, last4, status: 'pending' };
 };
@@ -391,6 +475,9 @@ const addBill = async (userId, payload) => {
   return { id: result.rows[0].id, userId, ...payload };
 };
 
+// ============================================================
+// FIXED: payBill - uses generateTransactionId()
+// ============================================================
 const payBill = async (userId, payload) => {
   const { billId, payeeId, amount, description, paymentDate, fromAccountId } = payload;
   const client = await pool.connect();
@@ -407,11 +494,21 @@ const payBill = async (userId, payload) => {
       accountId = accRows.rows[0].id;
     }
 
+    // Check if source account is on hold or frozen
+    const holdCheck2 = await client.query(
+      'SELECT status FROM accounts WHERE id = $1 AND user_id = $2 FOR UPDATE',
+      [accountId, userId]
+    );
+    if (holdCheck2.rows.length === 0) throw new Error('Source account not found');
+    if (holdCheck2.rows[0].status === 'inactive' || holdCheck2.rows[0].status === 'frozen') {
+      throw new Error('Source account is on hold or frozen. Bill payments cannot be processed.');
+    }
+
     const fromAcc = await client.query(
       'SELECT balance FROM accounts WHERE id = $1 AND user_id = $2 AND status = $3 FOR UPDATE',
       [accountId, userId, 'active']
     );
-    if (fromAcc.rows.length === 0) throw new Error('Source account not found');
+    if (fromAcc.rows.length === 0) throw new Error('Source account not found or not active');
 
     const balance = Number(fromAcc.rows[0].balance);
     const amountNum = Number(amount);
@@ -419,7 +516,8 @@ const payBill = async (userId, payload) => {
 
     await client.query('UPDATE accounts SET balance = balance - $1 WHERE id = $2', [amountNum, accountId]);
 
-    const txId = `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    // FIXED: Use generateTransactionId() instead of crypto.randomUUID().slice(0, 8)
+    const txId = generateTransactionId();
     const date = paymentDate || new Date().toISOString().slice(0, 10);
 
     await client.query(
@@ -445,6 +543,19 @@ const payBill = async (userId, payload) => {
     );
 
     await client.query('COMMIT');
+
+    // Emit real-time balance update and transaction
+    const updatedAccounts = await query(
+      'SELECT id, account_number, account_type, balance, routing_number, apy FROM accounts WHERE user_id = $1',
+      [userId]
+    );
+    emitToUser(userId, 'balance-update', { accounts: updatedAccounts.rows });
+    emitToUser(userId, 'new-transaction', {
+      transaction_id: txId, amount: -amountNum, type: 'payment', status: 'completed',
+      description: description || 'Bill payment',
+      transaction_date: date
+    });
+
     return { paymentId: payResult.rows[0].id, transactionId: txId };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -586,10 +697,183 @@ const markNotificationRead = async (userId, notificationId) => {
 
 const createNotification = async (userId, title, description) => {
   const result = await query(
-    'INSERT INTO notifications (user_id, title, description) VALUES ($1, $2, $3) RETURNING id',
+    'INSERT INTO notifications (user_id, title, description) VALUES ($1, $2, $3) RETURNING id, created_at',
     [userId, title, description]
   );
+  const notification = { id: result.rows[0].id, title, description, is_read: false, created_at: result.rows[0].created_at };
+  // Broadcast in real-time to the user
+  emitNotification(userId, notification);
   return { id: result.rows[0].id };
+};
+
+// ============================================================
+// FIXED: createWireTransfer - uses generateTransactionId()
+// ============================================================
+const createWireTransfer = async (userId, payload) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Validate account
+    const accRows = await client.query(
+      'SELECT id, balance FROM accounts WHERE id = $1 AND user_id = $2 AND status = $3 FOR UPDATE',
+      [payload.fromAccountId, userId, 'active']
+    );
+    if (accRows.rows.length === 0) throw new Error('Source account not found');
+
+    const amount = Number(payload.amount);
+    const fee = Number(payload.fee || 25);
+    const totalDeduction = amount + fee;
+    const currentBalance = Number(accRows.rows[0].balance);
+
+    if (currentBalance < totalDeduction) throw new Error('Insufficient balance (including wire fee)');
+
+    // Deduct funds from account
+    await client.query('UPDATE accounts SET balance = balance - $1 WHERE id = $2', [totalDeduction, payload.fromAccountId]);
+
+    // Create wire transfer record
+    const result = await client.query(
+      `INSERT INTO wire_transfers (
+        user_id, from_account_id, beneficiary_name, beneficiary_bank,
+        beneficiary_account, beneficiary_routing, beneficiary_address, swift_code,
+        amount, currency, fee, description, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending')
+      RETURNING id, status, created_at`,
+      [
+        userId,
+        payload.fromAccountId,
+        payload.beneficiaryName,
+        payload.beneficiaryBank,
+        payload.beneficiaryAccount,
+        payload.beneficiaryRouting || '',
+        payload.beneficiaryAddress || '',
+        payload.swiftCode || '',
+        amount,
+        payload.currency || 'USD',
+        fee,
+        payload.description || '',
+      ]
+    );
+
+    // FIXED: Use generateTransactionId() instead of crypto.randomUUID().slice(0, 8)
+    const txId = generateTransactionId();
+    await client.query(
+      `INSERT INTO transactions (transaction_id, user_id, account_id, amount, description, type, balance_after, status, transaction_date)
+       VALUES ($1, $2, $3, $4, $5, 'debit', $6, 'pending', CURRENT_DATE)`,
+      [txId, userId, payload.fromAccountId, -totalDeduction, `Wire transfer to ${payload.beneficiaryName}`, currentBalance - totalDeduction]
+    );
+
+    // Create notification
+    await client.query(
+      `INSERT INTO notifications (user_id, title, description)
+       VALUES ($1, 'Wire Transfer Initiated', $2)`,
+      [userId, `Wire transfer of $${amount.toFixed(2)} to ${payload.beneficiaryName} is pending review.`]
+    );
+
+    await client.query('COMMIT');
+    return {
+      id: result.rows[0].id,
+      status: result.rows[0].status,
+      createdAt: result.rows[0].created_at,
+      totalDeduction,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const listCustomerWireTransfers = async (userId) => {
+  const result = await pool.query(
+    `SELECT id, beneficiary_name, beneficiary_bank, beneficiary_account, amount, currency, fee,
+            description, status, error_message, is_sent, created_at, updated_at
+     FROM wire_transfers
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT 50`,
+    [userId]
+  );
+  return result.rows;
+};
+
+const getWireTransferDetails = async (userId, transferId) => {
+  const result = await pool.query(
+    `SELECT w.*, a.account_number, a.account_type
+     FROM wire_transfers w
+     JOIN accounts a ON a.id = w.from_account_id
+     WHERE w.id = $1 AND w.user_id = $2`,
+    [transferId, userId]
+  );
+  return result.rows[0] || null;
+};
+
+// ---------- CHEQUE DEPOSITS ----------
+const createChequeDeposit = async (userId, payload, files) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Validate account
+    const accRows = await client.query(
+      'SELECT id FROM accounts WHERE id = $1 AND user_id = $2 AND status = $3',
+      [payload.accountId, userId, 'active']
+    );
+    if (accRows.rows.length === 0) throw new Error('Account not found');
+
+    const frontImageUrl = files?.front?.[0]?.path || '';
+    const backImageUrl = files?.back?.[0]?.path || '';
+
+    const result = await client.query(
+      `INSERT INTO deposited_cheques (
+        user_id, account_id, amount, bank_name, cheque_number,
+        front_image_url, back_image_url, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+      RETURNING id, status, created_at`,
+      [
+        userId,
+        payload.accountId,
+        Number(payload.amount),
+        payload.bankName || '',
+        payload.chequeNumber || '',
+        frontImageUrl,
+        backImageUrl,
+      ]
+    );
+
+    // Create notification
+    await client.query(
+      `INSERT INTO notifications (user_id, title, description)
+       VALUES ($1, 'Cheque Deposit Initiated', $2)`,
+      [userId, `Cheque deposit of $${Number(payload.amount).toFixed(2)} is pending review.`]
+    );
+
+    await client.query('COMMIT');
+    return {
+      id: result.rows[0].id,
+      status: result.rows[0].status,
+      createdAt: result.rows[0].created_at,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const listCustomerChequeDeposits = async (userId) => {
+  const result = await pool.query(
+    `SELECT c.*, a.account_number, a.account_type
+     FROM deposited_cheques c
+     JOIN accounts a ON a.id = c.account_id
+     WHERE c.user_id = $1
+     ORDER BY c.created_at DESC
+     LIMIT 50`,
+    [userId]
+  );
+  return result.rows;
 };
 
 module.exports = {
@@ -620,5 +904,9 @@ module.exports = {
   listNotifications,
   markNotificationRead,
   createNotification,
+  createWireTransfer,
+  listCustomerWireTransfers,
+  getWireTransferDetails,
+  createChequeDeposit,
+  listCustomerChequeDeposits,
 };
-
