@@ -76,7 +76,7 @@ const GenerateDemoHistoryModal = ({ customerId, customerName, onClose, onSuccess
 
   const getDateRange = () => {
     const now = new Date();
-    const end = now.toISOString().slice(0, 10);
+    let end = now.toISOString().slice(0, 10);
     let start;
     switch (config.periodType) {
       case '1y': start = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().slice(0, 10); break;
