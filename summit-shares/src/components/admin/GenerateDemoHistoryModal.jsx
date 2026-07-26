@@ -114,45 +114,45 @@ const GenerateDemoHistoryModal = ({ customerId, customerName, onClose, onSuccess
 
   const renderStep1 = () => (
     <div>
-      <h4 style={{ fontSize: 14, fontWeight: 600, color: '#C9A84C', marginBottom: 16 }}>1. History Period</h4>
-      <div className="admin-grid-2">
-        <div className="admin-form-group">
-          <label>Period</label>
-          <select value={config.periodType} onChange={(e) => updateConfig('periodType', e.target.value)}>
+      <h4 style={{ fontSize: 12, fontWeight: 600, color: '#C9A84C', marginBottom: 8 }}>1. History Period</h4>
+      <div className="admin-grid-2" style={{ gap: 8 }}>
+        <div className="admin-form-group" style={{ marginBottom: 4 }}>
+          <label style={{ fontSize: 11 }}>Period</label>
+          <select value={config.periodType} onChange={(e) => updateConfig('periodType', e.target.value)} style={{ fontSize: 12, padding: '4px 8px' }}>
             {PRESET_PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
       </div>
       {config.periodType === 'custom' && (
-        <div className="admin-grid-2">
-          <div className="admin-form-group">
-            <label>Start Date</label>
-            <input type="date" value={config.startDate} onChange={(e) => updateConfig('startDate', e.target.value)} />
+        <div className="admin-grid-2" style={{ gap: 8 }}>
+          <div className="admin-form-group" style={{ marginBottom: 4 }}>
+            <label style={{ fontSize: 11 }}>Start Date</label>
+            <input type="date" value={config.startDate} onChange={(e) => updateConfig('startDate', e.target.value)} style={{ fontSize: 12, padding: '4px 8px' }} />
           </div>
-          <div className="admin-form-group">
-            <label>End Date</label>
-            <input type="date" value={config.endDate} onChange={(e) => updateConfig('endDate', e.target.value)} />
+          <div className="admin-form-group" style={{ marginBottom: 4 }}>
+            <label style={{ fontSize: 11 }}>End Date</label>
+            <input type="date" value={config.endDate} onChange={(e) => updateConfig('endDate', e.target.value)} style={{ fontSize: 12, padding: '4px 8px' }} />
           </div>
         </div>
       )}
 
-      <h4 style={{ fontSize: 14, fontWeight: 600, color: '#C9A84C', margin: '16px 0' }}>2. Financial Settings</h4>
-      <div className="admin-grid-2">
-        <div className="admin-form-group">
-          <label>Opening Balance ($)</label>
-          <input type="number" value={config.openingBalance} onChange={(e) => updateConfig('openingBalance', Number(e.target.value))} />
+      <h4 style={{ fontSize: 12, fontWeight: 600, color: '#C9A84C', margin: '8px 0' }}>2. Financial Settings</h4>
+      <div className="admin-grid-2" style={{ gap: 8 }}>
+        <div className="admin-form-group" style={{ marginBottom: 4 }}>
+          <label style={{ fontSize: 11 }}>Opening Balance ($)</label>
+          <input type="number" value={config.openingBalance} onChange={(e) => updateConfig('openingBalance', Number(e.target.value))} style={{ fontSize: 12, padding: '4px 8px' }} />
         </div>
-        <div className="admin-form-group">
-          <label>Target Ending Balance ($)</label>
-          <input type="number" value={config.targetEndingBalance} onChange={(e) => updateConfig('targetEndingBalance', Number(e.target.value))} />
+        <div className="admin-form-group" style={{ marginBottom: 4 }}>
+          <label style={{ fontSize: 11 }}>Target Ending Balance ($)</label>
+          <input type="number" value={config.targetEndingBalance} onChange={(e) => updateConfig('targetEndingBalance', Number(e.target.value))} style={{ fontSize: 12, padding: '4px 8px' }} />
         </div>
-        <div className="admin-form-group">
-          <label>Annual Income ($)</label>
-          <input type="number" value={config.annualIncome} onChange={(e) => updateConfig('annualIncome', Number(e.target.value))} />
+        <div className="admin-form-group" style={{ marginBottom: 4 }}>
+          <label style={{ fontSize: 11 }}>Annual Income ($)</label>
+          <input type="number" value={config.annualIncome} onChange={(e) => updateConfig('annualIncome', Number(e.target.value))} style={{ fontSize: 12, padding: '4px 8px' }} />
         </div>
-        <div className="admin-form-group">
-          <label>Annual Growth (%)</label>
-          <select value={config.annualGrowth} onChange={(e) => updateConfig('annualGrowth', Number(e.target.value))}>
+        <div className="admin-form-group" style={{ marginBottom: 4 }}>
+          <label style={{ fontSize: 11 }}>Annual Growth (%)</label>
+          <select value={config.annualGrowth} onChange={(e) => updateConfig('annualGrowth', Number(e.target.value))} style={{ fontSize: 12, padding: '4px 8px' }}>
             <option value={0}>0%</option>
             <option value={3}>3%</option>
             <option value={5}>5%</option>
@@ -161,55 +161,55 @@ const GenerateDemoHistoryModal = ({ customerId, customerName, onClose, onSuccess
         </div>
       </div>
 
-      <div className="modal-actions">
-        <button className="admin-btn admin-btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="admin-btn admin-btn-primary" onClick={() => setStep(2)}>Next: Profile & Activity</button>
+      <div className="modal-actions" style={{ marginTop: 8 }}>
+        <button className="admin-btn admin-btn-secondary" onClick={onClose} style={{ fontSize: 11, padding: '4px 12px' }}>Cancel</button>
+        <button className="admin-btn admin-btn-primary" onClick={() => setStep(2)} style={{ fontSize: 11, padding: '4px 12px' }}>Next: Profile & Activity</button>
       </div>
     </div>
   );
 
   const renderStep2 = () => (
     <div>
-      <h4 style={{ fontSize: 14, fontWeight: 600, color: '#C9A84C', marginBottom: 16 }}>3. Customer Financial Profile</h4>
-      <div className="admin-grid-2">
-        <div className="admin-form-group">
-          <label>Financial Profile</label>
-          <select value={config.financialProfile} onChange={(e) => updateConfig('financialProfile', e.target.value)}>
+      <h4 style={{ fontSize: 12, fontWeight: 600, color: '#C9A84C', marginBottom: 8 }}>3. Customer Financial Profile</h4>
+      <div className="admin-grid-2" style={{ gap: 8 }}>
+        <div className="admin-form-group" style={{ marginBottom: 4 }}>
+          <label style={{ fontSize: 11 }}>Financial Profile</label>
+          <select value={config.financialProfile} onChange={(e) => updateConfig('financialProfile', e.target.value)} style={{ fontSize: 12, padding: '4px 8px' }}>
             {FINANCIAL_PROFILES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
-        <div className="admin-form-group">
-          <label>Activity Level</label>
-          <select value={config.activityLevel} onChange={(e) => updateConfig('activityLevel', e.target.value)}>
+        <div className="admin-form-group" style={{ marginBottom: 4 }}>
+          <label style={{ fontSize: 11 }}>Activity Level</label>
+          <select value={config.activityLevel} onChange={(e) => updateConfig('activityLevel', e.target.value)} style={{ fontSize: 12, padding: '4px 8px' }}>
             {ACTIVITY_LEVELS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
           </select>
         </div>
-        <div className="admin-form-group">
-          <label>Country</label>
-          <select value={config.country} onChange={(e) => updateConfig('country', e.target.value)}>
+        <div className="admin-form-group" style={{ marginBottom: 4 }}>
+          <label style={{ fontSize: 11 }}>Country</label>
+          <select value={config.country} onChange={(e) => updateConfig('country', e.target.value)} style={{ fontSize: 12, padding: '4px 8px' }}>
             <option value="US">United States</option>
           </select>
         </div>
       </div>
 
-      <h4 style={{ fontSize: 14, fontWeight: 600, color: '#C9A84C', margin: '16px 0' }}>4. Select Modules to Populate</h4>
-      <div className="admin-grid-2">
+      <h4 style={{ fontSize: 12, fontWeight: 600, color: '#C9A84C', margin: '8px 0' }}>4. Select Modules to Populate</h4>
+      <div className="admin-grid-2" style={{ gap: 4 }}>
         {MODULES.map(m => (
-          <label key={m.value} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+          <label key={m.value} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={config.modules.includes(m.value)}
               onChange={() => toggleModule(m.value)}
-              style={{ accentColor: '#C9A84C' }}
+              style={{ accentColor: '#C9A84C', width: 12, height: 12 }}
             />
             {m.label}
           </label>
         ))}
       </div>
 
-      <div className="modal-actions">
-        <button className="admin-btn admin-btn-secondary" onClick={() => setStep(1)}>Back</button>
-        <button className="admin-btn admin-btn-primary" onClick={handleGenerate} disabled={loading}>
+      <div className="modal-actions" style={{ marginTop: 8 }}>
+        <button className="admin-btn admin-btn-secondary" onClick={() => setStep(1)} style={{ fontSize: 11, padding: '4px 12px' }}>Back</button>
+        <button className="admin-btn admin-btn-primary" onClick={handleGenerate} disabled={loading} style={{ fontSize: 11, padding: '4px 12px' }}>
           {loading ? 'Generating...' : 'Generate Demo Financial History'}
         </button>
       </div>
@@ -218,24 +218,24 @@ const GenerateDemoHistoryModal = ({ customerId, customerName, onClose, onSuccess
 
   return (
     <div className="admin-modal-overlay active" onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}>
-      <div className="admin-modal" style={{ maxWidth: 650 }}>
-        <div className="modal-title">Generate Demo Financial History</div>
-        <div className="modal-sub">
+      <div className="admin-modal" style={{ maxWidth: 520, padding: 16 }}>
+        <div className="modal-title" style={{ fontSize: 14, marginBottom: 4 }}>Generate Demo Financial History</div>
+        <div className="modal-sub" style={{ fontSize: 11, marginBottom: 8 }}>
           Customer: <strong>{customerName}</strong> (ID: {customerId})
         </div>
 
         {progress && (
-          <div style={{ marginBottom: 16, padding: 12, background: '#1a1a1a', borderRadius: 8, border: '1px solid #2a2a2a' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
+          <div style={{ marginBottom: 8, padding: 8, background: '#1a1a1a', borderRadius: 6, border: '1px solid #2a2a2a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
               <span style={{ color: progress.step === 'error' ? '#D94352' : '#C9A84C' }}>{progress.message}</span>
               <span style={{ color: '#6b6b6b' }}>{progress.percent}%</span>
             </div>
-            <div style={{ height: 6, background: '#2a2a2a', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ height: 4, background: '#2a2a2a', borderRadius: 2, overflow: 'hidden' }}>
               <div style={{
                 height: '100%',
                 width: `${progress.percent}%`,
                 background: progress.step === 'error' ? '#D94352' : 'linear-gradient(90deg, #C9A84C, #e6c86a)',
-                borderRadius: 3,
+                borderRadius: 2,
                 transition: 'width 0.5s ease',
               }} />
             </div>
