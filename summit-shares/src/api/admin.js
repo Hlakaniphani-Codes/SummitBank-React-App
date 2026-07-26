@@ -165,11 +165,30 @@ export const reviewApplication = async (id, notes = '') => {
   return handleResponse(res);
 };
 
+export const updateCreditScore = async (id, creditScore) => {
+  const res = await fetch(`${API_BASE}/customers/${id}/credit-score`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ creditScore }),
+  });
+  return handleResponse(res);
+};
+
 export const sendCustomerEmail = async (id, subject, message) => {
   const res = await fetch(`${API_BASE}/customers/${id}/send-email`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({ subject, message }),
+  });
+  return handleResponse(res);
+};
+
+// ---- DEMO HISTORY GENERATION ----
+export const generateDemoHistory = async (customerId, config) => {
+  const res = await fetch(`${API_BASE}/customers/${customerId}/generate-history`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(config),
   });
   return handleResponse(res);
 };

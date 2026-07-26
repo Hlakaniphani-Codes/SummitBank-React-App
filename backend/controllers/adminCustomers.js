@@ -11,6 +11,7 @@ const {
   createAuditLog,
   approveApplication: approveApplicationStore,
   rejectApplication: rejectApplicationStore,
+  setCreditScore,
 } = require('../utils/adminStore');
 const { sendCustomEmail, sendApprovalEmail, sendRejectionEmail } = require('../services/emailService');
 const pool = require('../config/db');  // Needed for direct queries
@@ -309,6 +310,25 @@ exports.reviewApplication = async (req, res) => {
     return res.json({ success: true, message: 'Application placed under review', application: app });
   } catch (error) {
     console.error('Review application error:', error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// POST /api/admin/customers/:id/credit-score
+exports.updateCreditScore = async (req, res) => {
+  const { id } = req.params;
+  const { creditScore } = req.body;
+  const adminId = req.userId;
+
+  if (creditScore === undefined || creditScore === null) {
+    return res.status(400).json({ success: false, message: 'creditScore is required' });
+  }
+
+  try {
+    const customer = await setCreditScore(id, creditScore, adminId);
+    return res.json({ success: true, message: 'Credit score updated', customer });
+  } catch (error) {
+    console.error('Update credit score error:', error);
     return res.status(400).json({ success: false, message: error.message });
   }
 };

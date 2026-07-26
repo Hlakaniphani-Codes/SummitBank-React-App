@@ -154,12 +154,19 @@ const getDashboardData = async (userId) => {
     [userId, 'expired']
   );
 
+  // Fetch credit score for the user
+  const creditScoreResult = await query(
+    'SELECT credit_score FROM users WHERE id = $1',
+    [userId]
+  );
+
   return {
     totalBalance: Number(balanceRows.rows[0]?.total || 0),
     accounts: accounts.rows,
     recentTransactions: recentTx.rows,
     unreadNotifications: Number(notificationRows.rows[0]?.count || 0),
     cards: cards.rows,
+    creditScore: creditScoreResult.rows[0]?.credit_score || null,
   };
 };
 

@@ -19,7 +19,7 @@ const AdminLayout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('adminRole');
-    navigate('/admin/login');
+    navigate('/');
   };
 
   // Get current page title from path

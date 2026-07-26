@@ -48,7 +48,7 @@ const getAdminDashboardStats = async () => {
 // CUSTOMER MANAGEMENT
 // ============================================================
 const listCustomers = async (filters = {}) => {
-  let sql = "SELECT id, first_name, last_name, email, phone, is_active, email_verified, role, created_at, last_login_at, status, login_enabled FROM users WHERE role = 'customer'";
+  let sql = "SELECT id, first_name, last_name, email, phone, is_active, email_verified, role, created_at, last_login_at, status, login_enabled, credit_score FROM users WHERE role = 'customer'";
   const params = [];
   let idx = 1;
 
@@ -1205,6 +1205,30 @@ const getAdminActivity = async (filters = {}) => {
   return result.rows;
 };
 
+const setCreditScore = async (customerId, creditScore, adminId) => {
+  if (creditScore !== null && (creditScore < 300 || creditScore > 850)) {
+    throw new Error('Credit score must be between 300 and 850');
+  }
+  
+  const result = await pool.query(
+    'UPDATE users SET credit_score = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, first_name, last_name, email, credit_score',
+    [creditScore, customerId]
+  );
+  if (result.rows.length === 0) throw new Error('Customer not found');
+  
+  await createAuditLog({
+    adminId,
+    action: 'update',
+    entityType: 'user',
+    entityId: Number(customerId),
+    description: `Updated credit score to ${creditScore} for customer #${customerId}`,
+    ipAddress: '',
+    userAgent: '',
+  });
+  
+  return result.rows[0];
+};
+
 const updateCustomer = async (customerId, updates) => {
   const allowedFields = ['first_name', 'middle_name', 'last_name', 'email', 'phone', 'street', 'apartment', 'city', 'state', 'zip', 'country', 'occupation', 'employer', 'income_range', 'source_of_funds', 'login_enabled', 'is_active'];
   const fields = [];
@@ -1246,12 +1270,50 @@ const setCustomerSuspended = async (customerId, suspended) => {
 };
 
 const deleteCustomer = async (customerId) => {
-  const result = await pool.query(
-    `UPDATE users SET is_active = false, email = CONCAT('deleted_', id, '_', email), updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND role = 'customer' RETURNING id`,
-    [customerId]
-  );
-  if (result.rows.length === 0) throw new Error('Customer not found or not a customer');
-  return { id: customerId, deleted: true };
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Verify customer exists
+    const check = await client.query(
+      `SELECT id, first_name, last_name, email FROM users WHERE id = $1 AND role = 'customer'`,
+      [customerId]
+    );
+    if (check.rows.length === 0) throw new Error('Customer not found or not a customer');
+
+    // Delete related records in order (cascade deletion)
+    await client.query('DELETE FROM login_history WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM password_resets WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM notifications WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM transactions WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM wire_transfers WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM cheque_deposits WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM cards WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM accounts WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM applications WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM beneficiaries WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM payees WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM bills WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM documents WHERE user_id = $1', [customerId]);
+    await client.query('DELETE FROM audit_logs WHERE user_id = $1 OR entity_id = $1', [customerId]);
+
+    // Finally delete the user
+    const result = await client.query(
+      'DELETE FROM users WHERE id = $1 AND role = $2 RETURNING id, first_name, last_name, email',
+      [customerId, 'customer']
+    );
+
+    if (result.rows.length === 0) throw new Error('Customer not found or not a customer');
+
+    await client.query('COMMIT');
+
+    return { id: customerId, deleted: true, customer: result.rows[0] };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 const getCustomerActivity = async (customerId, filters = {}) => {
@@ -1369,4 +1431,5 @@ module.exports = {
   rejectApplication,
   approveTransfer,
   blockTransfer,
+  setCreditScore,
 };

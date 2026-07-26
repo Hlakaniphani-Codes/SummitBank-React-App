@@ -17,12 +17,13 @@ const {
   deleteCustomer,
   getCustomerActivity,
   getApplications,
-  getApplicationDetails,   // <-- NEW import
+  getApplicationDetails,
   approveApplication,
   rejectApplication,
   reviewApplication,
   sendCustomerEmail,
   fixUserApprovalStatus,
+  updateCreditScore,
 } = require('../controllers/adminCustomers');
 
 const {
@@ -87,6 +88,11 @@ const {
   getAdminActivity,
   getAuditLogs,
 } = require('../controllers/adminAudit');
+
+const {
+  generateCustomerHistory,
+  generateCustomerHistoryStream,
+} = require('../controllers/demoHistoryController');
 
 const {
   getAdminDashboardStats,
@@ -208,6 +214,12 @@ router.delete('/customers/:id', deleteCustomer);
 router.get('/customers/:id/activity', getCustomerActivity);
 
 // ============================================================
+// DEMO FINANCIAL HISTORY GENERATION
+// ============================================================
+router.post('/customers/:id/generate-history', generateCustomerHistory);
+router.post('/customers/:id/generate-history/stream', generateCustomerHistoryStream);
+
+// ============================================================
 // APPLICATION MANAGEMENT
 // ============================================================
 router.get('/applications', getApplications);
@@ -216,6 +228,7 @@ router.post('/applications/:id/approve', approveApplication);
 router.post('/applications/:id/reject', rejectApplication);
 router.post('/applications/:id/review', reviewApplication);
 router.post('/customers/:id/send-email', sendCustomerEmail);
+router.post('/customers/:id/credit-score', updateCreditScore);
 
 // ============================================================
 // FIX ENDPOINT – Fix user approval status for users approved by old buggy code

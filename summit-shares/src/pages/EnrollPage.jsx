@@ -56,7 +56,216 @@ const US_STATES = [
   { value: 'WY', label: 'Wyoming' }
 ];
 
-// ----- Countries (plain text, no emojis, US first) -----
+// ----- Country Dial Codes WITH FLAG EMOJIS (unique per code + country) -----
+const COUNTRY_CODES = [
+  { code: '+1', country: 'US', label: '🇺🇸 US +1' },
+  { code: '+1', country: 'CA', label: '🇨🇦 CA +1' },
+  { code: '+7', country: 'RU', label: '🇷🇺 RU +7' },
+  { code: '+20', country: 'EG', label: '🇪🇬 EG +20' },
+  { code: '+27', country: 'ZA', label: '🇿🇦 ZA +27' },
+  { code: '+30', country: 'GR', label: '🇬🇷 GR +30' },
+  { code: '+31', country: 'NL', label: '🇳🇱 NL +31' },
+  { code: '+32', country: 'BE', label: '🇧🇪 BE +32' },
+  { code: '+33', country: 'FR', label: '🇫🇷 FR +33' },
+  { code: '+34', country: 'ES', label: '🇪🇸 ES +34' },
+  { code: '+36', country: 'HU', label: '🇭🇺 HU +36' },
+  { code: '+39', country: 'IT', label: '🇮🇹 IT +39' },
+  { code: '+40', country: 'RO', label: '🇷🇴 RO +40' },
+  { code: '+41', country: 'CH', label: '🇨🇭 CH +41' },
+  { code: '+43', country: 'AT', label: '🇦🇹 AT +43' },
+  { code: '+44', country: 'GB', label: '🇬🇧 GB +44' },
+  { code: '+45', country: 'DK', label: '🇩🇰 DK +45' },
+  { code: '+46', country: 'SE', label: '🇸🇪 SE +46' },
+  { code: '+47', country: 'NO', label: '🇳🇴 NO +47' },
+  { code: '+48', country: 'PL', label: '🇵🇱 PL +48' },
+  { code: '+49', country: 'DE', label: '🇩🇪 DE +49' },
+  { code: '+51', country: 'PE', label: '🇵🇪 PE +51' },
+  { code: '+52', country: 'MX', label: '🇲🇽 MX +52' },
+  { code: '+53', country: 'CU', label: '🇨🇺 CU +53' },
+  { code: '+54', country: 'AR', label: '🇦🇷 AR +54' },
+  { code: '+55', country: 'BR', label: '🇧🇷 BR +55' },
+  { code: '+56', country: 'CL', label: '🇨🇱 CL +56' },
+  { code: '+57', country: 'CO', label: '🇨🇴 CO +57' },
+  { code: '+58', country: 'VE', label: '🇻🇪 VE +58' },
+  { code: '+60', country: 'MY', label: '🇲🇾 MY +60' },
+  { code: '+61', country: 'AU', label: '🇦🇺 AU +61' },
+  { code: '+62', country: 'ID', label: '🇮🇩 ID +62' },
+  { code: '+63', country: 'PH', label: '🇵🇭 PH +63' },
+  { code: '+64', country: 'NZ', label: '🇳🇿 NZ +64' },
+  { code: '+65', country: 'SG', label: '🇸🇬 SG +65' },
+  { code: '+66', country: 'TH', label: '🇹🇭 TH +66' },
+  { code: '+81', country: 'JP', label: '🇯🇵 JP +81' },
+  { code: '+82', country: 'KR', label: '🇰🇷 KR +82' },
+  { code: '+84', country: 'VN', label: '🇻🇳 VN +84' },
+  { code: '+86', country: 'CN', label: '🇨🇳 CN +86' },
+  { code: '+90', country: 'TR', label: '🇹🇷 TR +90' },
+  { code: '+91', country: 'IN', label: '🇮🇳 IN +91' },
+  { code: '+92', country: 'PK', label: '🇵🇰 PK +92' },
+  { code: '+93', country: 'AF', label: '🇦🇫 AF +93' },
+  { code: '+94', country: 'LK', label: '🇱🇰 LK +94' },
+  { code: '+95', country: 'MM', label: '🇲🇲 MM +95' },
+  { code: '+98', country: 'IR', label: '🇮🇷 IR +98' },
+  { code: '+211', country: 'SS', label: '🇸🇸 SS +211' },
+  { code: '+212', country: 'MA', label: '🇲🇦 MA +212' },
+  { code: '+213', country: 'DZ', label: '🇩🇿 DZ +213' },
+  { code: '+216', country: 'TN', label: '🇹🇳 TN +216' },
+  { code: '+218', country: 'LY', label: '🇱🇾 LY +218' },
+  { code: '+220', country: 'GM', label: '🇬🇲 GM +220' },
+  { code: '+221', country: 'SN', label: '🇸🇳 SN +221' },
+  { code: '+222', country: 'MR', label: '🇲🇷 MR +222' },
+  { code: '+223', country: 'ML', label: '🇲🇱 ML +223' },
+  { code: '+224', country: 'GN', label: '🇬🇳 GN +224' },
+  { code: '+225', country: 'CI', label: '🇨🇮 CI +225' },
+  { code: '+226', country: 'BF', label: '🇧🇫 BF +226' },
+  { code: '+227', country: 'NE', label: '🇳🇪 NE +227' },
+  { code: '+228', country: 'TG', label: '🇹🇬 TG +228' },
+  { code: '+229', country: 'BJ', label: '🇧🇯 BJ +229' },
+  { code: '+230', country: 'MU', label: '🇲🇺 MU +230' },
+  { code: '+231', country: 'LR', label: '🇱🇷 LR +231' },
+  { code: '+232', country: 'SL', label: '🇸🇱 SL +232' },
+  { code: '+233', country: 'GH', label: '🇬🇭 GH +233' },
+  { code: '+234', country: 'NG', label: '🇳🇬 NG +234' },
+  { code: '+235', country: 'TD', label: '🇹🇩 TD +235' },
+  { code: '+236', country: 'CF', label: '🇨🇫 CF +236' },
+  { code: '+237', country: 'CM', label: '🇨🇲 CM +237' },
+  { code: '+238', country: 'CV', label: '🇨🇻 CV +238' },
+  { code: '+239', country: 'ST', label: '🇸🇹 ST +239' },
+  { code: '+240', country: 'GQ', label: '🇬🇶 GQ +240' },
+  { code: '+241', country: 'GA', label: '🇬🇦 GA +241' },
+  { code: '+242', country: 'CG', label: '🇨🇬 CG +242' },
+  { code: '+243', country: 'CD', label: '🇨🇩 CD +243' },
+  { code: '+244', country: 'AO', label: '🇦🇴 AO +244' },
+  { code: '+245', country: 'GW', label: '🇬🇼 GW +245' },
+  { code: '+246', country: 'IO', label: '🇮🇴 IO +246' },
+  { code: '+248', country: 'SC', label: '🇸🇨 SC +248' },
+  { code: '+249', country: 'SD', label: '🇸🇩 SD +249' },
+  { code: '+250', country: 'RW', label: '🇷🇼 RW +250' },
+  { code: '+251', country: 'ET', label: '🇪🇹 ET +251' },
+  { code: '+252', country: 'SO', label: '🇸🇴 SO +252' },
+  { code: '+253', country: 'DJ', label: '🇩🇯 DJ +253' },
+  { code: '+254', country: 'KE', label: '🇰🇪 KE +254' },
+  { code: '+255', country: 'TZ', label: '🇹🇿 TZ +255' },
+  { code: '+256', country: 'UG', label: '🇺🇬 UG +256' },
+  { code: '+257', country: 'BI', label: '🇧🇮 BI +257' },
+  { code: '+258', country: 'MZ', label: '🇲🇿 MZ +258' },
+  { code: '+260', country: 'ZM', label: '🇿🇲 ZM +260' },
+  { code: '+261', country: 'MG', label: '🇲🇬 MG +261' },
+  { code: '+262', country: 'RE', label: '🇷🇪 RE +262' },
+  { code: '+263', country: 'ZW', label: '🇿🇼 ZW +263' },
+  { code: '+264', country: 'NA', label: '🇳🇦 NA +264' },
+  { code: '+265', country: 'MW', label: '🇲🇼 MW +265' },
+  { code: '+266', country: 'LS', label: '🇱🇸 LS +266' },
+  { code: '+267', country: 'BW', label: '🇧🇼 BW +267' },
+  { code: '+268', country: 'SZ', label: '🇸🇿 SZ +268' },
+  { code: '+269', country: 'KM', label: '🇰🇲 KM +269' },
+  { code: '+290', country: 'SH', label: '🇸🇭 SH +290' },
+  { code: '+291', country: 'ER', label: '🇪🇷 ER +291' },
+  { code: '+297', country: 'AW', label: '🇦🇼 AW +297' },
+  { code: '+298', country: 'FO', label: '🇫🇴 FO +298' },
+  { code: '+299', country: 'GL', label: '🇬🇱 GL +299' },
+  { code: '+350', country: 'GI', label: '🇬🇮 GI +350' },
+  { code: '+351', country: 'PT', label: '🇵🇹 PT +351' },
+  { code: '+352', country: 'LU', label: '🇱🇺 LU +352' },
+  { code: '+353', country: 'IE', label: '🇮🇪 IE +353' },
+  { code: '+354', country: 'IS', label: '🇮🇸 IS +354' },
+  { code: '+355', country: 'AL', label: '🇦🇱 AL +355' },
+  { code: '+356', country: 'MT', label: '🇲🇹 MT +356' },
+  { code: '+357', country: 'CY', label: '🇨🇾 CY +357' },
+  { code: '+358', country: 'FI', label: '🇫🇮 FI +358' },
+  { code: '+359', country: 'BG', label: '🇧🇬 BG +359' },
+  { code: '+370', country: 'LT', label: '🇱🇹 LT +370' },
+  { code: '+371', country: 'LV', label: '🇱🇻 LV +371' },
+  { code: '+372', country: 'EE', label: '🇪🇪 EE +372' },
+  { code: '+373', country: 'MD', label: '🇲🇩 MD +373' },
+  { code: '+374', country: 'AM', label: '🇦🇲 AM +374' },
+  { code: '+375', country: 'BY', label: '🇧🇾 BY +375' },
+  { code: '+376', country: 'AD', label: '🇦🇩 AD +376' },
+  { code: '+377', country: 'MC', label: '🇲🇨 MC +377' },
+  { code: '+378', country: 'SM', label: '🇸🇲 SM +378' },
+  { code: '+380', country: 'UA', label: '🇺🇦 UA +380' },
+  { code: '+381', country: 'RS', label: '🇷🇸 RS +381' },
+  { code: '+382', country: 'ME', label: '🇲🇪 ME +382' },
+  { code: '+385', country: 'HR', label: '🇭🇷 HR +385' },
+  { code: '+386', country: 'SI', label: '🇸🇮 SI +386' },
+  { code: '+387', country: 'BA', label: '🇧🇦 BA +387' },
+  { code: '+389', country: 'MK', label: '🇲🇰 MK +389' },
+  { code: '+420', country: 'CZ', label: '🇨🇿 CZ +420' },
+  { code: '+421', country: 'SK', label: '🇸🇰 SK +421' },
+  { code: '+423', country: 'LI', label: '🇱🇮 LI +423' },
+  { code: '+500', country: 'FK', label: '🇫🇰 FK +500' },
+  { code: '+501', country: 'BZ', label: '🇧🇿 BZ +501' },
+  { code: '+502', country: 'GT', label: '🇬🇹 GT +502' },
+  { code: '+503', country: 'SV', label: '🇸🇻 SV +503' },
+  { code: '+504', country: 'HN', label: '🇭🇳 HN +504' },
+  { code: '+505', country: 'NI', label: '🇳🇮 NI +505' },
+  { code: '+506', country: 'CR', label: '🇨🇷 CR +506' },
+  { code: '+507', country: 'PA', label: '🇵🇦 PA +507' },
+  { code: '+508', country: 'PM', label: '🇵🇲 PM +508' },
+  { code: '+509', country: 'HT', label: '🇭🇹 HT +509' },
+  { code: '+590', country: 'GP', label: '🇬🇵 GP +590' },
+  { code: '+591', country: 'BO', label: '🇧🇴 BO +591' },
+  { code: '+592', country: 'GY', label: '🇬🇾 GY +592' },
+  { code: '+593', country: 'EC', label: '🇪🇨 EC +593' },
+  { code: '+594', country: 'GF', label: '🇬🇫 GF +594' },
+  { code: '+595', country: 'PY', label: '🇵🇾 PY +595' },
+  { code: '+596', country: 'MQ', label: '🇲🇶 MQ +596' },
+  { code: '+597', country: 'SR', label: '🇸🇷 SR +597' },
+  { code: '+598', country: 'UY', label: '🇺🇾 UY +598' },
+  { code: '+599', country: 'BQ', label: '🇧🇶 BQ +599' },
+  { code: '+670', country: 'TL', label: '🇹🇱 TL +670' },
+  { code: '+672', country: 'NF', label: '🇳🇫 NF +672' },
+  { code: '+673', country: 'BN', label: '🇧🇳 BN +673' },
+  { code: '+674', country: 'NR', label: '🇳🇷 NR +674' },
+  { code: '+675', country: 'PG', label: '🇵🇬 PG +675' },
+  { code: '+676', country: 'TO', label: '🇹🇴 TO +676' },
+  { code: '+677', country: 'SB', label: '🇸🇧 SB +677' },
+  { code: '+678', country: 'VU', label: '🇻🇺 VU +678' },
+  { code: '+679', country: 'FJ', label: '🇫🇯 FJ +679' },
+  { code: '+680', country: 'PW', label: '🇵🇼 PW +680' },
+  { code: '+681', country: 'WF', label: '🇼🇫 WF +681' },
+  { code: '+682', country: 'CK', label: '🇨🇰 CK +682' },
+  { code: '+683', country: 'NU', label: '🇳🇺 NU +683' },
+  { code: '+685', country: 'WS', label: '🇼🇸 WS +685' },
+  { code: '+686', country: 'KI', label: '🇰🇮 KI +686' },
+  { code: '+687', country: 'NC', label: '🇳🇨 NC +687' },
+  { code: '+688', country: 'TV', label: '🇹🇻 TV +688' },
+  { code: '+689', country: 'PF', label: '🇵🇫 PF +689' },
+  { code: '+690', country: 'TK', label: '🇹🇰 TK +690' },
+  { code: '+691', country: 'FM', label: '🇫🇲 FM +691' },
+  { code: '+692', country: 'MH', label: '🇲🇭 MH +692' },
+  { code: '+850', country: 'KP', label: '🇰🇵 KP +850' },
+  { code: '+852', country: 'HK', label: '🇭🇰 HK +852' },
+  { code: '+853', country: 'MO', label: '🇲🇴 MO +853' },
+  { code: '+855', country: 'KH', label: '🇰🇭 KH +855' },
+  { code: '+856', country: 'LA', label: '🇱🇦 LA +856' },
+  { code: '+880', country: 'BD', label: '🇧🇩 BD +880' },
+  { code: '+886', country: 'TW', label: '🇹🇼 TW +886' },
+  { code: '+960', country: 'MV', label: '🇲🇻 MV +960' },
+  { code: '+961', country: 'LB', label: '🇱🇧 LB +961' },
+  { code: '+962', country: 'JO', label: '🇯🇴 JO +962' },
+  { code: '+963', country: 'SY', label: '🇸🇾 SY +963' },
+  { code: '+964', country: 'IQ', label: '🇮🇶 IQ +964' },
+  { code: '+965', country: 'KW', label: '🇰🇼 KW +965' },
+  { code: '+966', country: 'SA', label: '🇸🇦 SA +966' },
+  { code: '+967', country: 'YE', label: '🇾🇪 YE +967' },
+  { code: '+968', country: 'OM', label: '🇴🇲 OM +968' },
+  { code: '+970', country: 'PS', label: '🇵🇸 PS +970' },
+  { code: '+971', country: 'AE', label: '🇦🇪 AE +971' },
+  { code: '+972', country: 'IL', label: '🇮🇱 IL +972' },
+  { code: '+973', country: 'BH', label: '🇧🇭 BH +973' },
+  { code: '+974', country: 'QA', label: '🇶🇦 QA +974' },
+  { code: '+975', country: 'BT', label: '🇧🇹 BT +975' },
+  { code: '+976', country: 'MN', label: '🇲🇳 MN +976' },
+  { code: '+977', country: 'NP', label: '🇳🇵 NP +977' },
+  { code: '+992', country: 'TJ', label: '🇹🇯 TJ +992' },
+  { code: '+993', country: 'TM', label: '🇹🇲 TM +993' },
+  { code: '+994', country: 'AZ', label: '🇦🇿 AZ +994' },
+  { code: '+995', country: 'GE', label: '🇬🇪 GE +995' },
+  { code: '+996', country: 'KG', label: '🇰🇬 KG +996' },
+  { code: '+998', country: 'UZ', label: '🇺🇿 UZ +998' },
+];
+
+// ----- Countries (plain text, no emojis) -----
 const COUNTRIES = [
   { value: 'US', label: 'United States' },
   { value: 'GB', label: 'United Kingdom' },
@@ -261,6 +470,7 @@ const EnrollPage = () => {
     lastName: '',
     dob: '',
     email: '',
+    phoneCode: '+1',
     phone: '',
     // Step 2
     street: '',
@@ -372,14 +582,7 @@ const EnrollPage = () => {
     return true;
   };
 
-  // ----- STEP VALIDATION -----
-  const validateStep = (step) => {
-    if (step === 4) {
-      return validateKyc();
-    }
-    return true;
-  };
-
+  // ----- STEP VALIDATION (extra) -----
   const goToStepWithValidation = (step) => {
     if (step === 5) {
       if (!validateKyc()) {
@@ -391,7 +594,7 @@ const EnrollPage = () => {
   };
 
   // ============================================================
-  // UPDATED handleSubmit – redirects to home, not dashboard
+  // SUBMIT HANDLER – redirects to home, not dashboard
   // ============================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -411,7 +614,7 @@ const EnrollPage = () => {
         lastName: formData.lastName,
         dob: formData.dob,
         email: formData.email,
-        phone: formData.phone,
+        phone: formData.phoneCode + ' ' + formData.phone,
         street: formData.street,
         apartment: formData.apartment,
         city: formData.city,
@@ -432,7 +635,6 @@ const EnrollPage = () => {
         terms: formData.terms,
       };
       const data = await register(payload);
-      // ✅ Success – show message and redirect to home (not dashboard)
       alert('✅ Your application has been submitted successfully and is awaiting administrator review.');
       window.location.href = '/';
     } catch (err) {
@@ -490,7 +692,46 @@ const EnrollPage = () => {
               </div>
               <div className="form-field">
                 <label>Phone Number <span className="required">*</span></label>
-                <input type="tel" placeholder="+1 (234) 567-8901" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1px solid #E8E2D9', borderRadius: 4, overflow: 'hidden', background: '#fff' }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <select
+                      value={formData.phoneCode}
+                      onChange={e => setFormData({...formData, phoneCode: e.target.value})}
+                      style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 2, fontSize: 14 }}
+                    >
+                      {COUNTRY_CODES.map(cc => (
+                        <option key={cc.country + cc.code} value={cc.code}>
+                          {cc.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#f5f3f0', padding: '0.5rem 0.65rem', cursor: 'pointer', height: '100%', borderRight: '1px solid #E8E2D9' }}>
+                      <span style={{ fontSize: 20, lineHeight: 1 }}>
+                        {(() => {
+                          const selected = COUNTRY_CODES.find(cc => cc.code === formData.phoneCode);
+                          return selected ? selected.label.split(' ')[0] : '🇺🇸';
+                        })()}
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0B0B0B', letterSpacing: '0.3px' }}>
+                        {(() => {
+                          const selected = COUNTRY_CODES.find(cc => cc.code === formData.phoneCode);
+                          return selected ? selected.code : '+1';
+                        })()}
+                      </span>
+                      <span style={{ fontSize: 8, color: '#8a8a8a' }}><i className="fas fa-chevron-down"></i></span>
+                    </div>
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder="(234) 567-8901"
+                    required
+                    value={formData.phone}
+                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                    style={{ flex: 1, padding: '0.6rem 0.75rem', border: 'none', background: '#fff', fontSize: '0.9rem', color: '#1A1A1A', outline: 'none', fontFamily: 'Inter, system-ui, sans-serif' }}
+                    onFocus={e => { e.target.parentElement.style.borderColor = '#C9A84C'; e.target.parentElement.style.boxShadow = '0 0 0 3px rgba(201,168,76,0.12)'; }}
+                    onBlur={e => { e.target.parentElement.style.borderColor = '#E8E2D9'; e.target.parentElement.style.boxShadow = 'none'; }}
+                  />
+                </div>
               </div>
             </div>
             <div className="flex justify-end items-center mt-4 pt-4 border-t border-brand-border">
@@ -544,7 +785,7 @@ const EnrollPage = () => {
             </div>
             <div className="flex justify-between items-center mt-4 pt-4 border-t border-brand-border">
               <button type="button" onClick={() => goToStep(1)} className="border border-brand-border hover:bg-slate-50 text-brand-dark font-bold px-6 py-2.5 rounded-sm text-xs uppercase tracking-wider transition">Previous</button>
-              <button type="button" onClick={() => goToStep(3)} className="bg-brand-dark hover:bg-neutral-900 text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition">Next</button>
+              <button type="button" onClick={() => goToStep(3)} className="bg-brand-dark hover:bg-neutral-900 text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition disabled:opacity-50 disabled:cursor-not-allowed" disabled={!formData.street || !formData.city || !formData.state || !formData.zip || !formData.country}>Next</button>
             </div>
           </>
         );
@@ -602,7 +843,7 @@ const EnrollPage = () => {
             </div>
             <div className="flex justify-between items-center mt-4 pt-4 border-t border-brand-border">
               <button type="button" onClick={() => goToStep(2)} className="border border-brand-border hover:bg-slate-50 text-brand-dark font-bold px-6 py-2.5 rounded-sm text-xs uppercase tracking-wider transition">Previous</button>
-              <button type="button" onClick={() => goToStep(4)} className="bg-brand-dark hover:bg-neutral-900 text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition">Next</button>
+              <button type="button" onClick={() => goToStep(4)} className="bg-brand-dark hover:bg-neutral-900 text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition disabled:opacity-50 disabled:cursor-not-allowed" disabled={!formData.occupation || !formData.income || !formData.sourceOfFunds}>Next</button>
             </div>
           </>
         );
@@ -759,7 +1000,7 @@ const EnrollPage = () => {
 
             <div className="flex justify-between items-center mt-4 pt-4 border-t border-brand-border">
               <button type="button" onClick={() => goToStep(3)} className="border border-brand-border hover:bg-slate-50 text-brand-dark font-bold px-6 py-2.5 rounded-sm text-xs uppercase tracking-wider transition">Previous</button>
-              <button type="button" onClick={() => goToStepWithValidation(5)} className="bg-brand-dark hover:bg-neutral-900 text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition">Next</button>
+              <button type="button" onClick={() => goToStepWithValidation(5)} className="bg-brand-dark hover:bg-neutral-900 text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition disabled:opacity-50 disabled:cursor-not-allowed" disabled={!formData.ssn || !formData.accountType || !formData.accountCurrency || !validateKyc()}>Next</button>
             </div>
           </>
         );
@@ -867,14 +1108,14 @@ const EnrollPage = () => {
 
             <div className="flex justify-between items-center mt-4 pt-4 border-t border-brand-border">
               <button type="button" onClick={() => goToStep(4)} className="border border-brand-border hover:bg-slate-50 text-brand-dark font-bold px-6 py-2.5 rounded-sm text-xs uppercase tracking-wider transition">Previous</button>
-              <button type="submit" onClick={handleSubmit} disabled={isSubmitting} className="bg-brand-gold hover:bg-brand-goldLight text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition shadow-md disabled:opacity-70">
+              <button type="submit" onClick={handleSubmit} disabled={!formData.pin.every(d => d) || !formData.password || !formData.confirmPassword || !formData.terms || isSubmitting} className="bg-brand-gold hover:bg-brand-goldLight text-white font-bold px-8 py-2.5 rounded-sm text-xs uppercase tracking-wider transition shadow-md disabled:opacity-70">
                 <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                 {isSubmitting ? 'Creating Account...' : 'Create Account'}
               </button>
             </div>
 
             <p className="text-center text-xs text-brand-slateText mt-4">
-              Already have an account? <a href="/login" className="text-brand-gold font-semibold hover:underline">Sign in</a>
+            Already have an account? <a href="/" className="text-brand-gold font-semibold hover:underline">Sign in</a>
             </p>
           </>
         );
@@ -913,7 +1154,7 @@ const EnrollPage = () => {
 
           <div className="flex items-center gap-4 sm:gap-6 text-xs font-bold uppercase tracking-wider text-brand-slateText">
             <a href="/support" className="hover:text-brand-gold transition">Contact</a>
-            <a href="/login" className="hover:text-brand-gold transition">Sign in</a>
+            <a href="/" className="hover:text-brand-gold transition">Sign in</a>
           </div>
         </div>
       </header>
@@ -1150,5 +1391,5 @@ const FileUploadField = ({ label, uploadId, file, preview, onFileChange, onRemov
     </div>
   );
 };
-
+ 
 export default EnrollPage;

@@ -16,7 +16,9 @@ import {
   sendCustomerEmail,
   getApplicationDetails,
   toggleLoginEnabled,
+  updateCreditScore,
 } from '../../api/admin';
+import GenerateDemoHistoryModal from '../../components/admin/GenerateDemoHistoryModal';
 
 const AdminCustomersPage = () => {
   const [activeTab, setActiveTab] = useState('customers');
@@ -37,6 +39,8 @@ const AdminCustomersPage = () => {
   const [editModal, setEditModal] = useState({ open: false, customerId: null, formData: {} });
   const [activityModal, setActivityModal] = useState({ open: false, customerId: null, activity: [] });
   const [appDetailModal, setAppDetailModal] = useState({ open: false, appId: null, data: null });
+  const [creditScoreModal, setCreditScoreModal] = useState({ open: false, customerId: null, currentScore: '' });
+  const [demoHistoryModal, setDemoHistoryModal] = useState({ open: false, customerId: null, customerName: '' });
 
   const showToast = (msg) => {
     setToast(msg);
@@ -184,6 +188,18 @@ const AdminCustomersPage = () => {
     }
   };
 
+  const handleUpdateCreditScore = async (e) => {
+    e.preventDefault();
+    try {
+      await updateCreditScore(creditScoreModal.customerId, parseInt(creditScoreModal.currentScore, 10));
+      showToast('Credit score updated successfully');
+      setCreditScoreModal({ open: false, customerId: null, currentScore: '' });
+      loadCustomers();
+    } catch (err) {
+      showToast(err.message);
+    }
+  };
+
   const openConfirmModal = (action, customer) => {
     setConfirmModal({ open: true, action, customerId: customer.id, customerName: `${customer.first_name} ${customer.last_name}` });
   };
@@ -303,6 +319,7 @@ const AdminCustomersPage = () => {
                             )}
                             <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => handleViewActivity(c.id)} title="Activity"><i className="fas fa-history"></i></button>
                             <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => setEmailModal({ open: true, customerId: c.id })} title="Email"><i className="fas fa-envelope"></i></button>
+                            <button className="admin-btn admin-btn-info admin-btn-xs" onClick={() => setCreditScoreModal({ open: true, customerId: c.id, currentScore: c.credit_score || '' })} title="Set Credit Score"><i className="fas fa-chart-line"></i></button>
                             <button className="admin-btn admin-btn-primary admin-btn-xs" onClick={() => handleToggleLogin(c.id, c.login_enabled)} title="Toggle Online Banking">
                               {c.login_enabled ? <i className="fas fa-lock"></i> : <i className="fas fa-unlock"></i>}
                             </button>
@@ -369,6 +386,9 @@ const AdminCustomersPage = () => {
                   <button className="admin-btn admin-btn-primary" onClick={() => { setEmailModal({ open: true, customerId: selectedCustomer.id }); setSelectedCustomer(null); }}>Email Customer</button>
                   <button className="admin-btn admin-btn-primary" onClick={() => handleToggleLogin(selectedCustomer.id, selectedCustomer.login_enabled)}>
                     {selectedCustomer.login_enabled ? 'Disable' : 'Enable'} Online Banking
+                  </button>
+                  <button className="admin-btn admin-btn-success" onClick={() => { setDemoHistoryModal({ open: true, customerId: selectedCustomer.id, customerName: `${selectedCustomer.first_name} ${selectedCustomer.last_name}` }); setSelectedCustomer(null); }}>
+                    <i className="fas fa-history"></i> Generate Demo History
                   </button>
                 </div>
               </div>
@@ -478,6 +498,35 @@ const AdminCustomersPage = () => {
               <div className="modal-actions">
                 <button className="admin-btn admin-btn-secondary" onClick={() => setActivityModal({ open: false, customerId: null, activity: [] })}>Close</button>
               </div>
+            </div>
+          </div>
+
+          {/* Credit Score Modal */}
+          <div className={`admin-modal-overlay ${creditScoreModal.open ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setCreditScoreModal({ open: false, customerId: null, currentScore: '' }); }}>
+            <div className="admin-modal" style={{ maxWidth: 400 }}>
+              <div className="modal-title">Set Credit Score</div>
+              <div className="modal-sub">Customer ID: {creditScoreModal.customerId}</div>
+              <form onSubmit={handleUpdateCreditScore}>
+                <div className="admin-form-group">
+                  <label>Credit Score (300–850)</label>
+                  <input
+                    type="number"
+                    min="300"
+                    max="850"
+                    value={creditScoreModal.currentScore}
+                    onChange={(e) => setCreditScoreModal({ ...creditScoreModal, currentScore: e.target.value })}
+                    placeholder="Enter credit score"
+                    required
+                  />
+                  <div style={{ fontSize: 10, color: '#6b6b6b', marginTop: 4 }}>
+                    Range: 300 (poor) – 850 (excellent). Leave empty to clear.
+                  </div>
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setCreditScoreModal({ open: false, customerId: null, currentScore: '' })}>Cancel</button>
+                  <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-save"></i> Update Score</button>
+                </div>
+              </form>
             </div>
           </div>
 
@@ -615,6 +664,17 @@ const AdminCustomersPage = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Demo History Generation Modal */}
+      {demoHistoryModal.open && (
+        <GenerateDemoHistoryModal
+          customerId={demoHistoryModal.customerId}
+          customerName={demoHistoryModal.customerName}
+          onClose={() => setDemoHistoryModal({ open: false, customerId: null, customerName: '' })}
+          onSuccess={() => loadCustomers()}
+          showToast={showToast}
+        />
       )}
     </div>
   );
