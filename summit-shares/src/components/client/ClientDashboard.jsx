@@ -168,7 +168,7 @@ const ClientDashboard = () => {
           <div className="widget-box">
             <div className="widget-header">
               <h4><i className="fas fa-arrow-right-arrow-left text-brand-gold mr-2"></i> Recent Transfers</h4>
-              <a onClick={() => navigateTo('transfer')}>View All</a>
+              <a onClick={() => navigateTo('transactions')}>View All</a>
             </div>
             {dashboardData.recentTransactions && dashboardData.recentTransactions.length > 0 ? (
               <div>
