@@ -1,5 +1,6 @@
  const pool = require('../config/db');
 const crypto = require('crypto');
+const { sendProfileApprovedEmail, sendAdminActionEmail } = require('../services/emailService');
 const { emitToUser, emitToAdmins, emitToAll, emitBalanceUpdate, emitNotification, emitTransaction } = require('../services/eventEmitter');
 
 // ============================================================
@@ -150,7 +151,16 @@ const approveApplication = async (applicationId, adminId, notes = '') => {
     );
 
     await client.query('COMMIT');
-    
+
+    const approvedCustomer = await getCustomerDetails(user_id);
+    if (approvedCustomer) {
+      await sendProfileApprovedEmail(approvedCustomer, {
+        userId: user_id,
+        eventType: 'profile_approved',
+        referenceId: applicationId,
+      });
+    }
+
     // Emit real-time notification to the user
     emitToUser(user_id, 'new-notification', {
       id: Date.now(),
@@ -254,6 +264,22 @@ const createAccount = async (userId, accountData, adminId) => {
     });
 
     await client.query('COMMIT');
+
+    const customer = await getCustomerDetails(userId);
+    if (customer) {
+      await sendAdminActionEmail(customer, 'Account Created', `A new ${accountType} account has been created on your behalf.`, {
+        'Account Number': result.rows[0].account_number,
+        'Account Type': result.rows[0].account_type,
+        'Currency': result.rows[0].currency,
+        'Opening Balance': `$${Number(result.rows[0].balance || 0).toFixed(2)}`,
+        'Routing Number': result.rows[0].routing_number || 'Not provided',
+      }, {
+        userId,
+        eventType: 'account_created',
+        referenceId: result.rows[0].id,
+      });
+    }
+
     return result.rows[0];
   } catch (error) {
     await client.query('ROLLBACK');
@@ -310,6 +336,19 @@ const setAccountStatus = async (accountId, status, adminId) => {
   const accountOwner = await pool.query('SELECT user_id FROM accounts WHERE id = $1', [accountId]);
   if (accountOwner.rows.length > 0) {
     const ownerId = accountOwner.rows[0].user_id;
+    const customer = await getCustomerDetails(ownerId);
+    if (customer) {
+      await sendAdminActionEmail(customer, `Account ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your account #${result.rows[0].account_number} has been ${status} by SummitShares.`, {
+        'Account Number': result.rows[0].account_number,
+        'Status': status,
+        'Updated At': new Date().toISOString(),
+      }, {
+        userId: ownerId,
+        eventType: `account_status_${status}`,
+        referenceId: accountId,
+      });
+    }
+
     emitToUser(ownerId, 'new-notification', {
       id: Date.now(),
       title: `Account ${status.charAt(0).toUpperCase() + status.slice(1)}`,
@@ -343,6 +382,17 @@ const setAccountHold = async (accountId, hold, adminId) => {
   const accountOwner2 = await pool.query('SELECT user_id FROM accounts WHERE id = $1', [accountId]);
   if (accountOwner2.rows.length > 0) {
     const ownerId = accountOwner2.rows[0].user_id;
+    const customer = await getCustomerDetails(ownerId);
+    if (customer) {
+      await sendAdminActionEmail(customer, hold ? 'Account on Hold' : 'Account Hold Removed', hold
+        ? `Your account #${result.rows[0].account_number} has been placed on hold by SummitShares.`
+        : `The hold on account #${result.rows[0].account_number} has been removed.`, {
+          'Account Number': result.rows[0].account_number,
+          'Status': hold ? 'On Hold' : 'Active',
+          'Updated At': new Date().toISOString(),
+        });
+    }
+
     emitToUser(ownerId, 'new-notification', {
       id: Date.now(),
       title: hold ? 'Account on Hold' : 'Hold Removed',
@@ -443,6 +493,21 @@ const issueCard = async (userId, accountId, cardData, adminId) => {
     description: `Issued ${cardType} card ending in ${last4} for user ${userId}`,
   });
 
+  const customer = await getCustomerDetails(userId);
+  if (customer) {
+    await sendAdminActionEmail(customer, 'New Card Issued', `A new ${cardType} card ending in ${last4} has been issued to your account.`, {
+      'Card Type': cardType,
+      'Card Network': cardNetwork,
+      'Last 4': last4,
+      'Expiry': `${expiryMonth}/${expiryYear}`,
+      'Cardholder': holderName,
+    }, {
+      userId,
+      eventType: 'card_issued',
+      referenceId: result.rows[0].id,
+    });
+  }
+
   // Emit real-time notification to the user
   emitToUser(userId, 'new-notification', {
     id: Date.now(),
@@ -484,6 +549,18 @@ const setCardStatus = async (cardId, status, adminId) => {
   const cardOwner = await pool.query('SELECT user_id FROM cards WHERE id = $1', [cardId]);
   if (cardOwner.rows.length > 0) {
     const ownerId = cardOwner.rows[0].user_id;
+    const customer = await getCustomerDetails(ownerId);
+    if (customer) {
+      await sendAdminActionEmail(customer, `Card ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your card ending in ${result.rows[0].last4} has been ${status} by SummitShares.`, {
+        'Last 4': result.rows[0].last4,
+        'Status': status,
+      }, {
+        userId: ownerId,
+        eventType: `card_status_${status}`,
+        referenceId: cardId,
+      });
+    }
+
     emitToUser(ownerId, 'new-notification', {
       id: Date.now(),
       title: `Card ${status.charAt(0).toUpperCase() + status.slice(1)}`,

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { sendPopupNotification, emailCustomer, broadcastNotification, getCustomers } from '../../api/admin';
+import React, { useEffect, useState } from 'react';
+import { sendPopupNotification, emailCustomer, broadcastNotification, getCustomers, getEmailNotifications, retryFailedEmailNotification } from '../../api/admin';
 
 const AdminNotificationsPage = () => {
   const [activeTab, setActiveTab] = useState('popup');
@@ -9,8 +9,22 @@ const AdminNotificationsPage = () => {
   const [broadcastForm, setBroadcastForm] = useState({ title: '', description: '', role: 'customer' });
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerResults, setCustomerResults] = useState([]);
+  const [emailLog, setEmailLog] = useState([]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const loadEmailLog = async () => {
+    try {
+      const data = await getEmailNotifications();
+      setEmailLog(data.notifications || []);
+    } catch (err) {
+      console.error('Failed to load email log', err);
+    }
+  };
+
+  useEffect(() => {
+    loadEmailLog();
+  }, []);
 
   const searchCustomers = async (search) => {
     setCustomerSearch(search);
@@ -46,6 +60,16 @@ const AdminNotificationsPage = () => {
       showToast(`Broadcast sent to ${data.recipients} recipients`);
       setBroadcastForm({ title: '', description: '', role: 'customer' });
     } catch (err) { showToast(err.message); }
+  };
+
+  const handleRetryEmail = async (id) => {
+    try {
+      const result = await retryFailedEmailNotification(id);
+      showToast(result.message || 'Retry attempted');
+      await loadEmailLog();
+    } catch (err) {
+      showToast(err.message);
+    }
   };
 
   return (
@@ -150,6 +174,46 @@ const AdminNotificationsPage = () => {
               <i className="fas fa-bullhorn"></i> Broadcast
             </button>
           </form>
+        </div>
+      </div>
+
+      <div className="admin-card" style={{ marginTop: 24 }}>
+        <div className="card-header">
+          <h3>Email Delivery Log</h3>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: '#f3f4f6' }}>
+                <th style={{ padding: 8, textAlign: 'left' }}>Event</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Recipient</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Status</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Retry</th>
+                <th style={{ padding: 8, textAlign: 'left' }}>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {emailLog.length === 0 ? (
+                <tr><td colSpan={5} style={{ padding: 12, color: '#6b6b6b' }}>No email activity yet.</td></tr>
+              ) : emailLog.map(item => (
+                <tr key={item.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                  <td style={{ padding: 8 }}>{item.event_type}</td>
+                  <td style={{ padding: 8 }}>{item.recipient_email}</td>
+                  <td style={{ padding: 8 }}>{item.status}</td>
+                  <td style={{ padding: 8 }}>
+                    {item.status === 'failed' ? (
+                      <button type="button" onClick={() => handleRetryEmail(item.id)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #1d4ed8', background: '#dbeafe', color: '#1e3a8a', cursor: 'pointer' }}>
+                        Retry
+                      </button>
+                    ) : (
+                      item.retry_count || 0
+                    )}
+                  </td>
+                  <td style={{ padding: 8 }}>{item.error_message || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

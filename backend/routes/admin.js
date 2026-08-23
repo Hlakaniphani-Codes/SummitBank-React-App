@@ -80,6 +80,8 @@ const {
   sendPopup,
   emailCustomer,
   broadcast,
+  getEmailLog,
+  retryEmailNotification,
 } = require('../controllers/adminNotifications');
 
 const {
@@ -298,6 +300,8 @@ router.post('/transfers/:id/notify', notifyCustomer);
 router.post('/notifications/popup', sendPopup);
 router.post('/notifications/email', emailCustomer);
 router.post('/notifications/broadcast', broadcast);
+router.get('/notifications/email-log', getEmailLog);
+router.post('/notifications/email/retry/:id', retryEmailNotification);
 
 // ============================================================
 // AUDIT & SECURITY

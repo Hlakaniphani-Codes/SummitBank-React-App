@@ -562,6 +562,23 @@ export const broadcastNotification = async (title, description, role = 'customer
   return handleResponse(res);
 };
 
+export const getEmailNotifications = async (filters = {}) => {
+  const params = new URLSearchParams();
+  if (filters.userId) params.set('userId', filters.userId);
+  if (filters.status) params.set('status', filters.status);
+  if (filters.eventType) params.set('eventType', filters.eventType);
+  const res = await fetch(`${API_BASE}/notifications/email-log?${params.toString()}`, { headers: headers() });
+  return handleResponse(res);
+};
+
+export const retryFailedEmailNotification = async (id) => {
+  const res = await fetch(`${API_BASE}/notifications/email/retry/${id}`, {
+    method: 'POST',
+    headers: headers(),
+  });
+  return handleResponse(res);
+};
+
 // ---- AUDIT ----
 export const getLoginHistory = async (filters = {}) => {
   const params = new URLSearchParams(filters).toString();

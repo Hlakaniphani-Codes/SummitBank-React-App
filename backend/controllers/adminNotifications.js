@@ -4,7 +4,11 @@ const {
   createAuditLog,
   getCustomerDetails,
 } = require('../utils/adminStore');
-const { sendCustomEmail } = require('../services/emailService');
+const {
+  sendCustomEmail,
+  getEmailNotifications,
+  retryFailedEmailNotification,
+} = require('../services/emailService');
 
 // POST /api/admin/notifications/popup
 exports.sendPopup = async (req, res) => {
@@ -87,6 +91,42 @@ exports.broadcast = async (req, res) => {
     return res.json({ success: true, message: 'Broadcast sent', recipients: result.count });
   } catch (error) {
     console.error('Broadcast error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /api/admin/notifications/email-log
+exports.getEmailLog = async (req, res) => {
+  const { userId, status, eventType } = req.query;
+
+  try {
+    const rows = await getEmailNotifications({ userId, status, eventType });
+    return res.json({ success: true, notifications: rows });
+  } catch (error) {
+    console.error('Get email log error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// POST /api/admin/notifications/email/retry/:id
+exports.retryEmailNotification = async (req, res) => {
+  const { id } = req.params;
+  const adminId = req.userId;
+
+  try {
+    const result = await retryFailedEmailNotification(Number(id));
+    await createAuditLog({
+      adminId,
+      action: 'retry_email',
+      entityType: 'email_notification',
+      entityId: Number(id),
+      description: `Retried failed email notification #${id}`,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    return res.json({ success: result.ok, message: result.message, notificationId: Number(id) });
+  } catch (error) {
+    console.error('Retry email notification error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
