@@ -44,6 +44,10 @@ const AdminCustomersPage = () => {
   const [appDetailModal, setAppDetailModal] = useState({ open: false, appId: null, data: null });
   const [creditScoreModal, setCreditScoreModal] = useState({ open: false, customerId: null, currentScore: '' });
   const [demoHistoryModal, setDemoHistoryModal] = useState({ open: false, customerId: null, customerName: '' });
+  // Tracks whichever mutating action is currently in flight, so the button
+  // that was clicked shows it's working instead of the UI just sitting there
+  // looking frozen, and a second click can't fire the same action twice.
+  const [submitting, setSubmitting] = useState(null);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -97,6 +101,8 @@ const AdminCustomersPage = () => {
   };
 
   const handleApprove = async (id) => {
+    if (submitting) return;
+    setSubmitting('approve');
     try {
       await approveApplication(id, reviewNotes);
       showToast('Application approved');
@@ -105,10 +111,14 @@ const AdminCustomersPage = () => {
       loadApplications();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleReject = async (id) => {
+    if (submitting) return;
+    setSubmitting('reject');
     try {
       await rejectApplication(id, reviewNotes);
       showToast('Application rejected');
@@ -117,10 +127,14 @@ const AdminCustomersPage = () => {
       loadApplications();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleReview = async (id) => {
+    if (submitting) return;
+    setSubmitting('review');
     try {
       await reviewApplication(id, reviewNotes);
       showToast('Application placed under review');
@@ -129,17 +143,23 @@ const AdminCustomersPage = () => {
       loadApplications();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleSendEmail = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('email');
     try {
       await sendCustomerEmail(emailModal.customerId, emailForm.subject, emailForm.message);
       showToast('Email sent successfully');
       closeEmailModal();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
@@ -155,16 +175,22 @@ const AdminCustomersPage = () => {
 
   const handleSendNotification = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('notify');
     try {
       await sendCustomerNotification(notifyModal.customerId, notifyForm.title, notifyForm.description);
       showToast('Notification sent successfully');
       closeNotifyModal();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleCustomerAction = async () => {
+    if (submitting) return;
+    setSubmitting('customer-action');
     const { action, customerId } = confirmModal;
     try {
       if (action === 'activate') await activateCustomer(customerId);
@@ -177,11 +203,15 @@ const AdminCustomersPage = () => {
       loadCustomers();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleEditCustomer = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('edit');
     try {
       await updateCustomer(editModal.customerId, editModal.formData);
       showToast('Customer updated successfully');
@@ -189,16 +219,22 @@ const AdminCustomersPage = () => {
       loadCustomers();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleToggleLogin = async (customerId, currentStatus) => {
+    if (submitting) return;
+    setSubmitting(`toggle-login-${customerId}`);
     try {
       await toggleLoginEnabled(customerId, !currentStatus);
       showToast(`Online banking ${!currentStatus ? 'enabled' : 'disabled'} successfully`);
       loadCustomers();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
@@ -213,6 +249,8 @@ const AdminCustomersPage = () => {
 
   const handleUpdateCreditScore = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('credit-score');
     try {
       await updateCreditScore(creditScoreModal.customerId, parseInt(creditScoreModal.currentScore, 10));
       showToast('Credit score updated successfully');
@@ -220,6 +258,8 @@ const AdminCustomersPage = () => {
       loadCustomers();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
@@ -344,8 +384,8 @@ const AdminCustomersPage = () => {
                             <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => setEmailModal({ open: true, customerId: c.id })} title="Email"><i className="fas fa-envelope"></i></button>
                             <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => setNotifyModal({ open: true, customerId: c.id })} title="Send Notification"><i className="fas fa-bell"></i></button>
                             <button className="admin-btn admin-btn-info admin-btn-xs" onClick={() => setCreditScoreModal({ open: true, customerId: c.id, currentScore: c.credit_score || '' })} title="Set Credit Score"><i className="fas fa-chart-line"></i></button>
-                            <button className="admin-btn admin-btn-primary admin-btn-xs" onClick={() => handleToggleLogin(c.id, c.login_enabled)} title="Toggle Online Banking">
-                              {c.login_enabled ? <i className="fas fa-lock"></i> : <i className="fas fa-unlock"></i>}
+                            <button className="admin-btn admin-btn-primary admin-btn-xs" onClick={() => handleToggleLogin(c.id, c.login_enabled)} disabled={submitting === `toggle-login-${c.id}`} title="Toggle Online Banking">
+                              {submitting === `toggle-login-${c.id}` ? <i className="fas fa-spinner fa-spin"></i> : c.login_enabled ? <i className="fas fa-lock"></i> : <i className="fas fa-unlock"></i>}
                             </button>
                             <button className="admin-btn admin-btn-danger admin-btn-xs" onClick={() => openConfirmModal('delete', c)} title="Delete"><i className="fas fa-trash"></i></button>
                           </div>
@@ -426,10 +466,10 @@ const AdminCustomersPage = () => {
               <div className="modal-title" style={{ textTransform: 'capitalize' }}>{confirmModal.action} Customer</div>
               <div className="modal-sub">Are you sure you want to {confirmModal.action} <strong>{confirmModal.customerName}</strong>?</div>
               <div className="modal-actions">
-                <button className="admin-btn admin-btn-secondary" onClick={() => setConfirmModal({ open: false, action: '', customerId: null, customerName: '' })}>Cancel</button>
-                <button className={`admin-btn ${confirmModal.action === 'delete' || confirmModal.action === 'suspend' || confirmModal.action === 'deactivate' ? 'admin-btn-danger' : 'admin-btn-success'}`} onClick={handleCustomerAction}>
-                  <i className={`fas ${confirmModal.action === 'delete' ? 'fa-trash' : confirmModal.action === 'suspend' ? 'fa-ban' : confirmModal.action === 'deactivate' ? 'fa-pause' : 'fa-check'}`}></i>
-                  {' '}{confirmModal.action.charAt(0).toUpperCase() + confirmModal.action.slice(1)}
+                <button className="admin-btn admin-btn-secondary" disabled={submitting === 'customer-action'} onClick={() => setConfirmModal({ open: false, action: '', customerId: null, customerName: '' })}>Cancel</button>
+                <button className={`admin-btn ${confirmModal.action === 'delete' || confirmModal.action === 'suspend' || confirmModal.action === 'deactivate' ? 'admin-btn-danger' : 'admin-btn-success'}`} disabled={submitting === 'customer-action'} onClick={handleCustomerAction}>
+                  <i className={`fas ${submitting === 'customer-action' ? 'fa-spinner fa-spin' : confirmModal.action === 'delete' ? 'fa-trash' : confirmModal.action === 'suspend' ? 'fa-ban' : confirmModal.action === 'deactivate' ? 'fa-pause' : 'fa-check'}`}></i>
+                  {' '}{submitting === 'customer-action' ? 'Working…' : confirmModal.action.charAt(0).toUpperCase() + confirmModal.action.slice(1)}
                 </button>
               </div>
             </div>
@@ -491,8 +531,8 @@ const AdminCustomersPage = () => {
                   </div>
                 </div>
                 <div className="modal-actions">
-                  <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setEditModal({ open: false, customerId: null, formData: {} })}>Cancel</button>
-                  <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-save"></i> Save Changes</button>
+                  <button type="button" className="admin-btn admin-btn-secondary" disabled={submitting === 'edit'} onClick={() => setEditModal({ open: false, customerId: null, formData: {} })}>Cancel</button>
+                  <button type="submit" className="admin-btn admin-btn-primary" disabled={submitting === 'edit'}><i className={`fas ${submitting === 'edit' ? 'fa-spinner fa-spin' : 'fa-save'}`}></i> {submitting === 'edit' ? 'Saving…' : 'Save Changes'}</button>
                 </div>
               </form>
             </div>
@@ -548,8 +588,8 @@ const AdminCustomersPage = () => {
                   </div>
                 </div>
                 <div className="modal-actions">
-                  <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setCreditScoreModal({ open: false, customerId: null, currentScore: '' })}>Cancel</button>
-                  <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-save"></i> Update Score</button>
+                  <button type="button" className="admin-btn admin-btn-secondary" disabled={submitting === 'credit-score'} onClick={() => setCreditScoreModal({ open: false, customerId: null, currentScore: '' })}>Cancel</button>
+                  <button type="submit" className="admin-btn admin-btn-primary" disabled={submitting === 'credit-score'}><i className={`fas ${submitting === 'credit-score' ? 'fa-spinner fa-spin' : 'fa-save'}`}></i> {submitting === 'credit-score' ? 'Updating…' : 'Update Score'}</button>
                 </div>
               </form>
             </div>
@@ -569,8 +609,8 @@ const AdminCustomersPage = () => {
                   <textarea value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} placeholder="Type your message..." required rows={4}></textarea>
                 </div>
                 <div className="modal-actions">
-                  <button type="button" className="admin-btn admin-btn-secondary" onClick={closeEmailModal}>Cancel</button>
-                  <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-paper-plane"></i> Send</button>
+                  <button type="button" className="admin-btn admin-btn-secondary" disabled={submitting === 'email'} onClick={closeEmailModal}>Cancel</button>
+                  <button type="submit" className="admin-btn admin-btn-primary" disabled={submitting === 'email'}><i className={`fas ${submitting === 'email' ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i> {submitting === 'email' ? 'Sending…' : 'Send'}</button>
                 </div>
               </form>
             </div>
@@ -591,8 +631,8 @@ const AdminCustomersPage = () => {
                   <textarea value={notifyForm.description} onChange={(e) => setNotifyForm({ ...notifyForm, description: e.target.value })} placeholder="Type your message..." required rows={4}></textarea>
                 </div>
                 <div className="modal-actions">
-                  <button type="button" className="admin-btn admin-btn-secondary" onClick={closeNotifyModal}>Cancel</button>
-                  <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-bell"></i> Send</button>
+                  <button type="button" className="admin-btn admin-btn-secondary" disabled={submitting === 'notify'} onClick={closeNotifyModal}>Cancel</button>
+                  <button type="submit" className="admin-btn admin-btn-primary" disabled={submitting === 'notify'}><i className={`fas ${submitting === 'notify' ? 'fa-spinner fa-spin' : 'fa-bell'}`}></i> {submitting === 'notify' ? 'Sending…' : 'Send'}</button>
                 </div>
               </form>
             </div>
@@ -685,8 +725,8 @@ const AdminCustomersPage = () => {
                 <button className="admin-btn admin-btn-secondary" onClick={() => setAppDetailModal({ open: false, appId: null, data: null })}>Close</button>
                 {appDetailModal.data?.status === 'pending' && (
                   <>
-                    <button className="admin-btn admin-btn-success" onClick={() => { handleApprove(appDetailModal.appId); setAppDetailModal({ open: false, appId: null, data: null }); }}>Approve</button>
-                    <button className="admin-btn admin-btn-danger" onClick={() => { handleReject(appDetailModal.appId); setAppDetailModal({ open: false, appId: null, data: null }); }}>Reject</button>
+                    <button className="admin-btn admin-btn-success" disabled={!!submitting} onClick={() => { handleApprove(appDetailModal.appId); setAppDetailModal({ open: false, appId: null, data: null }); }}>Approve</button>
+                    <button className="admin-btn admin-btn-danger" disabled={!!submitting} onClick={() => { handleReject(appDetailModal.appId); setAppDetailModal({ open: false, appId: null, data: null }); }}>Reject</button>
                   </>
                 )}
               </div>
@@ -703,10 +743,10 @@ const AdminCustomersPage = () => {
                 <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Add notes about this decision..." rows={3}></textarea>
               </div>
               <div className="modal-actions">
-                <button className="admin-btn admin-btn-secondary" onClick={() => setReviewModal({ open: false, appId: null, action: '' })}>Cancel</button>
-                {reviewModal.action === 'approve' && <button className="admin-btn admin-btn-success" onClick={() => handleApprove(reviewModal.appId)}><i className="fas fa-check"></i> Approve</button>}
-                {reviewModal.action === 'reject' && <button className="admin-btn admin-btn-danger" onClick={() => handleReject(reviewModal.appId)}><i className="fas fa-times"></i> Reject</button>}
-                {reviewModal.action === 'review' && <button className="admin-btn admin-btn-warning" onClick={() => handleReview(reviewModal.appId)}><i className="fas fa-search"></i> Place Under Review</button>}
+                <button className="admin-btn admin-btn-secondary" disabled={!!submitting} onClick={() => setReviewModal({ open: false, appId: null, action: '' })}>Cancel</button>
+                {reviewModal.action === 'approve' && <button className="admin-btn admin-btn-success" disabled={!!submitting} onClick={() => handleApprove(reviewModal.appId)}><i className={`fas ${submitting === 'approve' ? 'fa-spinner fa-spin' : 'fa-check'}`}></i> {submitting === 'approve' ? 'Approving…' : 'Approve'}</button>}
+                {reviewModal.action === 'reject' && <button className="admin-btn admin-btn-danger" disabled={!!submitting} onClick={() => handleReject(reviewModal.appId)}><i className={`fas ${submitting === 'reject' ? 'fa-spinner fa-spin' : 'fa-times'}`}></i> {submitting === 'reject' ? 'Rejecting…' : 'Reject'}</button>}
+                {reviewModal.action === 'review' && <button className="admin-btn admin-btn-warning" disabled={!!submitting} onClick={() => handleReview(reviewModal.appId)}><i className={`fas ${submitting === 'review' ? 'fa-spinner fa-spin' : 'fa-search'}`}></i> {submitting === 'review' ? 'Submitting…' : 'Place Under Review'}</button>}
               </div>
             </div>
           </div>

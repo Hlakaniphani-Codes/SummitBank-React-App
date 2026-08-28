@@ -34,6 +34,10 @@ const AdminCardsPage = () => {
   const [selectedCustomerAccounts, setSelectedCustomerAccounts] = useState([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [accountsError, setAccountsError] = useState('');
+  // Tracks whichever mutating action is currently in flight, so the button
+  // that was clicked shows it's working instead of the UI just sitting there
+  // looking frozen, and a second click can't fire the same action twice.
+  const [submitting, setSubmitting] = useState(null);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -55,6 +59,8 @@ const AdminCardsPage = () => {
   useEffect(() => { loadCards(); }, [search, statusFilter]);
 
   const handleAction = async () => {
+    if (submitting) return;
+    setSubmitting('confirm');
     const { action, cardId } = confirmModal;
     try {
       if (action === 'activate') await activateCard(cardId);
@@ -68,12 +74,25 @@ const AdminCardsPage = () => {
       showToast(`Card ${action}d successfully`);
       setConfirmModal({ open: false, action: '', cardId: null, last4: '' });
       loadCards();
-    } catch (err) { showToast(err.message); }
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const handleToggleVisibility = async (id, hidden) => {
-    try { await toggleCardVisibility(id, hidden); showToast(hidden ? 'Card hidden' : 'Card shown'); loadCards(); }
-    catch (err) { showToast(err.message); }
+    if (submitting) return;
+    setSubmitting(`visibility-${id}`);
+    try {
+      await toggleCardVisibility(id, hidden);
+      showToast(hidden ? 'Card hidden' : 'Card shown');
+      loadCards();
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const openModal = (action, card) => {
@@ -82,13 +101,19 @@ const AdminCardsPage = () => {
 
   const handleIssueCard = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('issue');
     try {
       await issueCard(issueForm);
       showToast('Card issued successfully');
       setIssueModal(false);
       setIssueForm({ userId: '', accountId: '', cardType: 'debit', cardNetwork: 'visa', cardholderName: '' });
       loadCards();
-    } catch (err) { showToast(err.message); }
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const handleCustomerChange = (userId) => {
@@ -197,7 +222,7 @@ const AdminCardsPage = () => {
                           <>
                             <button className="admin-btn admin-btn-danger admin-btn-xs" onClick={() => openModal('deactivate', c)}>Deactivate</button>
                             <button className="admin-btn admin-btn-danger admin-btn-xs" onClick={() => openModal('block', c)}>Block</button>
-                            <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => handleToggleVisibility(c.id, true)}>Hide</button>
+                            <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => handleToggleVisibility(c.id, true)} disabled={submitting === `visibility-${c.id}`}>{submitting === `visibility-${c.id}` ? <i className="fas fa-spinner fa-spin"></i> : 'Hide'}</button>
                             <button className="admin-btn admin-btn-warning admin-btn-xs" onClick={() => openModal('replace', c)}>Replace</button>
                             <button className="admin-btn admin-btn-danger admin-btn-xs" onClick={() => openModal('cancel', c)}>Cancel</button>
                           </>
@@ -279,8 +304,8 @@ const AdminCardsPage = () => {
               <input type="text" value={issueForm.cardholderName} onChange={(e) => setIssueForm({ ...issueForm, cardholderName: e.target.value })} placeholder="Full name on card" required />
             </div>
             <div className="modal-actions">
-              <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setIssueModal(false)}>Cancel</button>
-              <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-credit-card"></i> Issue Card</button>
+              <button type="button" className="admin-btn admin-btn-secondary" disabled={submitting === 'issue'} onClick={() => setIssueModal(false)}>Cancel</button>
+              <button type="submit" className="admin-btn admin-btn-primary" disabled={submitting === 'issue'}><i className={`fas ${submitting === 'issue' ? 'fa-spinner fa-spin' : 'fa-credit-card'}`}></i> {submitting === 'issue' ? 'Issuing…' : 'Issue Card'}</button>
             </div>
           </form>
         </div>
@@ -292,10 +317,10 @@ const AdminCardsPage = () => {
           <div className="modal-title" style={{ textTransform: 'capitalize' }}>{confirmModal.action} Card</div>
           <div className="modal-sub">Are you sure you want to {confirmModal.action} card ending in <strong>****{confirmModal.last4}</strong>?</div>
           <div className="modal-actions">
-            <button className="admin-btn admin-btn-secondary" onClick={() => setConfirmModal({ open: false, action: '', cardId: null, last4: '' })}>Cancel</button>
-            <button className={`admin-btn ${['deactivate','block','reject','cancel'].includes(confirmModal.action) ? 'admin-btn-danger' : 'admin-btn-success'}`} onClick={handleAction}>
-              <i className={`fas ${confirmModal.action === 'unblock' ? 'fa-unlock' : 'fa-check'}`}></i>
-              {' '}{confirmModal.action.charAt(0).toUpperCase() + confirmModal.action.slice(1)}
+            <button className="admin-btn admin-btn-secondary" disabled={submitting === 'confirm'} onClick={() => setConfirmModal({ open: false, action: '', cardId: null, last4: '' })}>Cancel</button>
+            <button className={`admin-btn ${['deactivate','block','reject','cancel'].includes(confirmModal.action) ? 'admin-btn-danger' : 'admin-btn-success'}`} disabled={submitting === 'confirm'} onClick={handleAction}>
+              <i className={`fas ${submitting === 'confirm' ? 'fa-spinner fa-spin' : confirmModal.action === 'unblock' ? 'fa-unlock' : 'fa-check'}`}></i>
+              {' '}{submitting === 'confirm' ? 'Working…' : confirmModal.action.charAt(0).toUpperCase() + confirmModal.action.slice(1)}
             </button>
           </div>
         </div>

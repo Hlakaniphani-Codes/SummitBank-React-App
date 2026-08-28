@@ -37,6 +37,10 @@ const AdminAccountsPage = () => {
   const [detailModal, setDetailModal] = useState({ open: false, accountId: null, details: null });
   const [balModal, setBalModal] = useState({ open: false, type: '', accountId: null });
   const [balForm, setBalForm] = useState({ newBalance: '' });
+  // Tracks whichever mutating action is currently in flight, so the button
+  // that was clicked shows it's working instead of the UI just sitting there
+  // looking frozen, and a second click can't fire the same action twice.
+  const [submitting, setSubmitting] = useState(null);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -103,6 +107,8 @@ const AdminAccountsPage = () => {
 
   const handleBalSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('bal');
     const { accountId, type } = balModal;
     try {
       if (type === 'available') {
@@ -117,11 +123,15 @@ const AdminAccountsPage = () => {
       loadAccounts();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleCreateAccount = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('create');
     try {
       await createAccount(createForm);
       showToast('Account created successfully');
@@ -129,11 +139,15 @@ const AdminAccountsPage = () => {
       loadAccounts();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleEditAccount = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('edit');
     try {
       await updateAccount(editModal.accountId, editModal.formData);
       showToast('Account updated successfully');
@@ -141,10 +155,14 @@ const AdminAccountsPage = () => {
       loadAccounts();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleConfirmAction = async () => {
+    if (submitting) return;
+    setSubmitting('confirm');
     const { action, accountId } = confirmModal;
     try {
       if (action === 'activate') await activateAccount(accountId);
@@ -158,11 +176,15 @@ const AdminAccountsPage = () => {
       loadAccounts();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('action');
     const { accountId, type } = modal;
     try {
       if (type === 'credit') {
@@ -179,6 +201,8 @@ const AdminAccountsPage = () => {
       loadAccounts();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
@@ -333,8 +357,8 @@ const AdminAccountsPage = () => {
               </div>
             </div>
             <div className="modal-actions">
-              <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setCreateModal({ open: false })}>Cancel</button>
-              <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-save"></i> Create Account</button>
+              <button type="button" className="admin-btn admin-btn-secondary" disabled={submitting === 'create'} onClick={() => setCreateModal({ open: false })}>Cancel</button>
+              <button type="submit" className="admin-btn admin-btn-primary" disabled={submitting === 'create'}><i className={`fas ${submitting === 'create' ? 'fa-spinner fa-spin' : 'fa-save'}`}></i> {submitting === 'create' ? 'Creating…' : 'Create Account'}</button>
             </div>
           </form>
         </div>
@@ -346,10 +370,10 @@ const AdminAccountsPage = () => {
           <div className="modal-title">{getActionLabel(confirmModal.action)} Account</div>
           <div className="modal-sub">Are you sure you want to {getActionLabel(confirmModal.action).toLowerCase()} account <strong>{confirmModal.accountNumber}</strong>?</div>
           <div className="modal-actions">
-            <button className="admin-btn admin-btn-secondary" onClick={() => setConfirmModal({ open: false, action: '', accountId: null, accountNumber: '' })}>Cancel</button>
-            <button className={`admin-btn ${['close', 'deactivate', 'freeze'].includes(confirmModal.action) ? 'admin-btn-danger' : 'admin-btn-success'}`} onClick={handleConfirmAction}>
-              <i className={`fas ${confirmModal.action === 'activate' ? 'fa-check-circle' : confirmModal.action === 'deactivate' ? 'fa-pause-circle' : confirmModal.action === 'close' ? 'fa-times-circle' : confirmModal.action === 'reopen' ? 'fa-undo-alt' : confirmModal.action === 'freeze' ? 'fa-snowflake' : 'fa-fire'}`}></i>
-              {' '}{getActionLabel(confirmModal.action)}
+            <button className="admin-btn admin-btn-secondary" disabled={submitting === 'confirm'} onClick={() => setConfirmModal({ open: false, action: '', accountId: null, accountNumber: '' })}>Cancel</button>
+            <button className={`admin-btn ${['close', 'deactivate', 'freeze'].includes(confirmModal.action) ? 'admin-btn-danger' : 'admin-btn-success'}`} disabled={submitting === 'confirm'} onClick={handleConfirmAction}>
+              <i className={`fas ${submitting === 'confirm' ? 'fa-spinner fa-spin' : confirmModal.action === 'activate' ? 'fa-check-circle' : confirmModal.action === 'deactivate' ? 'fa-pause-circle' : confirmModal.action === 'close' ? 'fa-times-circle' : confirmModal.action === 'reopen' ? 'fa-undo-alt' : confirmModal.action === 'freeze' ? 'fa-snowflake' : 'fa-fire'}`}></i>
+              {' '}{submitting === 'confirm' ? 'Working…' : getActionLabel(confirmModal.action)}
             </button>
           </div>
         </div>
@@ -381,8 +405,8 @@ const AdminAccountsPage = () => {
               <input type="text" value={editModal.formData.routing_number || ''} onChange={(e) => setEditModal({ ...editModal, formData: { ...editModal.formData, routing_number: e.target.value } })} />
             </div>
             <div className="modal-actions">
-              <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setEditModal({ open: false, accountId: null, formData: {} })}>Cancel</button>
-              <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-save"></i> Save</button>
+              <button type="button" className="admin-btn admin-btn-secondary" disabled={submitting === 'edit'} onClick={() => setEditModal({ open: false, accountId: null, formData: {} })}>Cancel</button>
+              <button type="submit" className="admin-btn admin-btn-primary" disabled={submitting === 'edit'}><i className={`fas ${submitting === 'edit' ? 'fa-spinner fa-spin' : 'fa-save'}`}></i> {submitting === 'edit' ? 'Saving…' : 'Save'}</button>
             </div>
           </form>
         </div>
@@ -502,8 +526,8 @@ const AdminAccountsPage = () => {
                 : 'Sets the ledger balance (total book balance including pending transactions).'}
             </p>
             <div className="modal-actions">
-              <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setBalModal({ open: false, type: '', accountId: null })}>Cancel</button>
-              <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-save"></i> Update</button>
+              <button type="button" className="admin-btn admin-btn-secondary" disabled={submitting === 'bal'} onClick={() => setBalModal({ open: false, type: '', accountId: null })}>Cancel</button>
+              <button type="submit" className="admin-btn admin-btn-primary" disabled={submitting === 'bal'}><i className={`fas ${submitting === 'bal' ? 'fa-spinner fa-spin' : 'fa-save'}`}></i> {submitting === 'bal' ? 'Updating…' : 'Update'}</button>
             </div>
           </form>
         </div>
@@ -536,10 +560,10 @@ const AdminAccountsPage = () => {
               </div>
             )}
             <div className="modal-actions">
-              <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setModal({ open: false, type: '', accountId: null })}>Cancel</button>
-              <button type="submit" className={`admin-btn ${modal.type === 'debit' ? 'admin-btn-danger' : modal.type === 'credit' ? 'admin-btn-success' : 'admin-btn-primary'}`}>
-                <i className={`fas ${modal.type === 'credit' ? 'fa-plus' : modal.type === 'debit' ? 'fa-minus' : 'fa-save'}`}></i>
-                {modal.type === 'credit' ? ' Credit' : modal.type === 'debit' ? ' Debit' : ' Update'}
+              <button type="button" className="admin-btn admin-btn-secondary" disabled={submitting === 'action'} onClick={() => setModal({ open: false, type: '', accountId: null })}>Cancel</button>
+              <button type="submit" className={`admin-btn ${modal.type === 'debit' ? 'admin-btn-danger' : modal.type === 'credit' ? 'admin-btn-success' : 'admin-btn-primary'}`} disabled={submitting === 'action'}>
+                <i className={`fas ${submitting === 'action' ? 'fa-spinner fa-spin' : modal.type === 'credit' ? 'fa-plus' : modal.type === 'debit' ? 'fa-minus' : 'fa-save'}`}></i>
+                {submitting === 'action' ? ' Working…' : modal.type === 'credit' ? ' Credit' : modal.type === 'debit' ? ' Debit' : ' Update'}
               </button>
             </div>
           </form>

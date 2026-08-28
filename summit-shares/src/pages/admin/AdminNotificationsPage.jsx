@@ -10,6 +10,10 @@ const AdminNotificationsPage = () => {
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerResults, setCustomerResults] = useState([]);
   const [emailLog, setEmailLog] = useState([]);
+  // Tracks whichever mutating action is currently in flight, so the button
+  // that was clicked shows it's working instead of the UI just sitting there
+  // looking frozen, and a second click can't fire the same action twice.
+  const [submitting, setSubmitting] = useState(null);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
@@ -37,38 +41,60 @@ const AdminNotificationsPage = () => {
 
   const handleSendPopup = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('popup');
     try {
       await sendPopupNotification(popupForm.userId, popupForm.title, popupForm.description);
       showToast('Popup notification sent');
       setPopupForm({ userId: '', title: '', description: '' });
-    } catch (err) { showToast(err.message); }
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const handleSendEmail = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('email');
     try {
       await emailCustomer(emailForm.userId, emailForm.subject, emailForm.message);
       showToast('Email sent to customer');
       setEmailForm({ userId: '', subject: '', message: '' });
-    } catch (err) { showToast(err.message); }
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const handleBroadcast = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting('broadcast');
     try {
       const data = await broadcastNotification(broadcastForm.title, broadcastForm.description, broadcastForm.role);
       showToast(`Broadcast sent to ${data.recipients} recipients`);
       setBroadcastForm({ title: '', description: '', role: 'customer' });
-    } catch (err) { showToast(err.message); }
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const handleRetryEmail = async (id) => {
+    if (submitting) return;
+    setSubmitting(`retry-${id}`);
     try {
       const result = await retryFailedEmailNotification(id);
       showToast(result.message || 'Retry attempted');
       await loadEmailLog();
     } catch (err) {
       showToast(err.message);
+    } finally {
+      setSubmitting(null);
     }
   };
 
@@ -122,8 +148,8 @@ const AdminNotificationsPage = () => {
               <label>Description</label>
               <textarea value={popupForm.description} onChange={(e) => setPopupForm({ ...popupForm, description: e.target.value })} placeholder="Notification message..." rows={3} required></textarea>
             </div>
-            <button type="submit" className="admin-btn admin-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-              <i className="fas fa-paper-plane"></i> Send Popup
+            <button type="submit" className="admin-btn admin-btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={submitting === 'popup'}>
+              <i className={`fas ${submitting === 'popup' ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i> {submitting === 'popup' ? 'Sending…' : 'Send Popup'}
             </button>
           </form>
         </div>
@@ -144,8 +170,8 @@ const AdminNotificationsPage = () => {
               <label>Message</label>
               <textarea value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} placeholder="Type your message..." rows={4} required></textarea>
             </div>
-            <button type="submit" className="admin-btn admin-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-              <i className="fas fa-envelope"></i> Send Email
+            <button type="submit" className="admin-btn admin-btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={submitting === 'email'}>
+              <i className={`fas ${submitting === 'email' ? 'fa-spinner fa-spin' : 'fa-envelope'}`}></i> {submitting === 'email' ? 'Sending…' : 'Send Email'}
             </button>
           </form>
         </div>
@@ -170,8 +196,8 @@ const AdminNotificationsPage = () => {
                 <option value="super_admin">Super Admins</option>
               </select>
             </div>
-            <button type="submit" className="admin-btn admin-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-              <i className="fas fa-bullhorn"></i> Broadcast
+            <button type="submit" className="admin-btn admin-btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={submitting === 'broadcast'}>
+              <i className={`fas ${submitting === 'broadcast' ? 'fa-spinner fa-spin' : 'fa-bullhorn'}`}></i> {submitting === 'broadcast' ? 'Sending…' : 'Broadcast'}
             </button>
           </form>
         </div>
@@ -202,8 +228,8 @@ const AdminNotificationsPage = () => {
                   <td data-label="Status">{item.status}</td>
                   <td data-label="Retry">
                     {item.status === 'failed' ? (
-                      <button type="button" className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => handleRetryEmail(item.id)}>
-                        Retry
+                      <button type="button" className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => handleRetryEmail(item.id)} disabled={submitting === `retry-${item.id}`}>
+                        {submitting === `retry-${item.id}` ? <i className="fas fa-spinner fa-spin"></i> : 'Retry'}
                       </button>
                     ) : (
                       item.retry_count || 0
