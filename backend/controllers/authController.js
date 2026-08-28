@@ -192,12 +192,13 @@ exports.login = async (req, res) => {
     // The OTP row exists regardless of whether delivery actually succeeds (SMTP being
     // down/unconfigured must not block the response - the customer can still use
     // Resend once it's fixed, same as how a real provider outage would be handled).
+    // Not awaited: a slow/unreachable SMTP server (common on hosts that restrict
+    // outbound mail ports) would otherwise stall every single login for as long
+    // as the connection takes to time out.
     const code = await otpService.createOtp(user.id, 'login');
-    try {
-      await sendOtpEmail(user, code);
-    } catch (emailError) {
+    sendOtpEmail(user, code).catch((emailError) => {
       console.error('[EMAIL ERROR] Failed to send login OTP email:', emailError.message);
-    }
+    });
 
     return res.json({
       success: true,
@@ -303,11 +304,9 @@ exports.resendLoginOtp = async (req, res) => {
     const user = rows[0];
 
     const code = await otpService.createOtp(user.id, 'login');
-    try {
-      await sendOtpEmail(user, code);
-    } catch (emailError) {
+    sendOtpEmail(user, code).catch((emailError) => {
       console.error('[EMAIL ERROR] Failed to resend login OTP email:', emailError.message);
-    }
+    });
 
     return res.json({ success: true, message: 'A new verification code has been sent to your email.' });
   } catch (error) {
@@ -352,7 +351,12 @@ exports.forgotPassword = async (req, res) => {
 
     const resetUrl = `${process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
-    await sendPasswordResetEmail(user, resetUrl);
+    // Not awaited, same reasoning as the OTP emails above: the reset token is
+    // already stored, so a slow/unreachable SMTP server must not stall this
+    // response or turn into a false "Server error" for the requester.
+    sendPasswordResetEmail(user, resetUrl).catch((emailError) => {
+      console.error('[EMAIL ERROR] Failed to send password reset email:', emailError.message);
+    });
 
     return res.json({ success: true, message: 'If that email exists, we sent a reset link.' });
   } catch (error) {

@@ -190,7 +190,7 @@ const approveApplication = async (applicationId, adminId, notes = '') => {
 
     const approvedCustomer = await getCustomerDetails(user_id);
     if (approvedCustomer) {
-      await safeSendCustomerEmail('profile-approved', sendProfileApprovedEmail, approvedCustomer, {
+      safeSendCustomerEmail('profile-approved', sendProfileApprovedEmail, approvedCustomer, {
         userId: user_id,
         eventType: 'profile_approved',
         referenceId: applicationId,
@@ -293,7 +293,7 @@ const createAccount = async (userId, accountData, adminId) => {
 
     const customer = await getCustomerDetails(userId);
     if (customer) {
-      await safeSendCustomerEmail('account-created', sendAdminActionEmail, customer, 'Account Created', `A new ${accountType} account has been created on your behalf.`, {
+      safeSendCustomerEmail('account-created', sendAdminActionEmail, customer, 'Account Created', `A new ${accountType} account has been created on your behalf.`, {
         'Account Number': result.rows[0].account_number,
         'Account Type': result.rows[0].account_type,
         'Currency': result.rows[0].currency,
@@ -365,7 +365,7 @@ const setAccountStatus = async (accountId, status, adminId) => {
     const ownerId = accountOwner.rows[0].user_id;
     const customer = await getCustomerDetails(ownerId);
     if (customer) {
-      await safeSendCustomerEmail('account-status', sendAdminActionEmail, customer, `Account ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your account #${result.rows[0].account_number} has been ${accountStatusPhrase} by Summit Shares.`, {
+      safeSendCustomerEmail('account-status', sendAdminActionEmail, customer, `Account ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your account #${result.rows[0].account_number} has been ${accountStatusPhrase} by Summit Shares.`, {
         'Account Number': result.rows[0].account_number,
         'Status': status,
         'Updated At': new Date().toISOString(),
@@ -465,7 +465,7 @@ const issueCard = async (userId, accountId, cardData, adminId) => {
 
   const customer = await getCustomerDetails(userId);
   if (customer) {
-    await safeSendCustomerEmail('card-issued', sendAdminActionEmail, customer, 'New Card Issued', `A new ${cardType} card ending in ${last4} has been issued to your account.`, {
+    safeSendCustomerEmail('card-issued', sendAdminActionEmail, customer, 'New Card Issued', `A new ${cardType} card ending in ${last4} has been issued to your account.`, {
       'Card Type': cardType,
       'Card Network': cardNetwork,
       'Last 4': last4,
@@ -516,7 +516,7 @@ const setCardStatus = async (cardId, status, adminId) => {
     const ownerId = cardOwner.rows[0].user_id;
     const customer = await getCustomerDetails(ownerId);
     if (customer) {
-      await safeSendCustomerEmail('card-status', sendAdminActionEmail, customer, `Card ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your card ending in ${result.rows[0].last4} has been ${cardStatusPhrase} by Summit Shares.`, {
+      safeSendCustomerEmail('card-status', sendAdminActionEmail, customer, `Card ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your card ending in ${result.rows[0].last4} has been ${cardStatusPhrase} by Summit Shares.`, {
         'Last 4': result.rows[0].last4,
         'Status': status,
       }, {
@@ -645,7 +645,7 @@ const creditAccount = async (accountId, amount, description, adminId) => {
     await notifyCustomer(account.rows[0].user_id, 'Account Credited', `$${Number(amount).toFixed(2)} has been credited to your account by Summit Shares.`);
     const creditCustomer = await getCustomerDetails(account.rows[0].user_id);
     if (creditCustomer) {
-      await safeSendCustomerEmail('account-credited', sendAdminActionEmail, creditCustomer, 'Account Credited', `$${Number(amount).toFixed(2)} has been credited to your account by Summit Shares.`, {
+      safeSendCustomerEmail('account-credited', sendAdminActionEmail, creditCustomer, 'Account Credited', `$${Number(amount).toFixed(2)} has been credited to your account by Summit Shares.`, {
         'Account Number': account.rows[0].account_number,
         'Amount': `$${Number(amount).toFixed(2)}`,
         'New Balance': `$${Number(newBalance).toFixed(2)}`,
@@ -700,7 +700,7 @@ const debitAccount = async (accountId, amount, description, adminId) => {
     await notifyCustomer(account.rows[0].user_id, 'Account Debited', `$${Number(amount).toFixed(2)} has been debited from your account by Summit Shares.`);
     const debitCustomer = await getCustomerDetails(account.rows[0].user_id);
     if (debitCustomer) {
-      await safeSendCustomerEmail('account-debited', sendAdminActionEmail, debitCustomer, 'Account Debited', `$${Number(amount).toFixed(2)} has been debited from your account by Summit Shares.`, {
+      safeSendCustomerEmail('account-debited', sendAdminActionEmail, debitCustomer, 'Account Debited', `$${Number(amount).toFixed(2)} has been debited from your account by Summit Shares.`, {
         'Account Number': account.rows[0].account_number,
         'Amount': `$${Number(amount).toFixed(2)}`,
         'New Balance': `$${Number(newBalance).toFixed(2)}`,
@@ -1296,7 +1296,7 @@ const setCustomerStatus = async (customerId, isActive) => {
     ? 'Your Summit Shares profile has been activated. You now have full access to online banking.'
     : 'Your Summit Shares profile has been deactivated. Please contact support if you believe this is a mistake.';
   await notifyCustomer(customerId, title, description);
-  await safeSendCustomerEmail('customer-status', sendAdminActionEmail, customer, title, description, {}, {
+  safeSendCustomerEmail('customer-status', sendAdminActionEmail, customer, title, description, {}, {
     userId: customerId,
     eventType: `customer_status_${isActive ? 'active' : 'inactive'}`,
     referenceId: customerId,
@@ -1318,7 +1318,7 @@ const setCustomerSuspended = async (customerId, suspended) => {
     ? 'Your Summit Shares account has been suspended. Please contact support for details.'
     : 'Your Summit Shares account has been reinstated. You now have full access to online banking.';
   await notifyCustomer(customerId, title, description);
-  await safeSendCustomerEmail('customer-suspend', sendAdminActionEmail, customer, title, description, {}, {
+  safeSendCustomerEmail('customer-suspend', sendAdminActionEmail, customer, title, description, {}, {
     userId: customerId,
     eventType: `customer_suspend_${suspended ? 'suspended' : 'reinstated'}`,
     referenceId: customerId,

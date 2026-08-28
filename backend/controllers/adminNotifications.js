@@ -50,7 +50,11 @@ exports.emailCustomer = async (req, res) => {
     const customer = await getCustomerDetails(userId);
     if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
 
-    await sendCustomEmail(customer.email, subject, message);
+    // Not awaited: a slow/unreachable SMTP server must not stall this request.
+    // Delivery status is still tracked in the email_notifications log.
+    sendCustomEmail(customer.email, subject, message).catch((emailError) => {
+      console.error('[EMAIL ERROR] Failed to send custom email:', emailError.message);
+    });
 
     await createAuditLog({
       adminId,
