@@ -5,6 +5,7 @@ const {
   createNotification,
 } = require('../utils/postgresStore');
 const { emitToUser } = require('../services/eventEmitter');
+const { sendError } = require('../utils/apiError');
 
 exports.getBeneficiaries = async (req, res) => {
   const userId = req.userId;
@@ -39,8 +40,7 @@ exports.postBeneficiary = async (req, res) => {
     
     return res.status(201).json({ success: true, beneficiary });
   } catch (error) {
-    console.error('Add beneficiary error:', error);
-    return res.status(400).json({ success: false, message: error.message || 'Failed to add beneficiary' });
+    return sendError(res, error, { logLabel: 'Add beneficiary error', fallbackMessage: 'Failed to add beneficiary' });
   }
 };
 
@@ -62,8 +62,7 @@ exports.deleteBeneficiary = async (req, res) => {
     
     return res.json({ success: true, message: 'Beneficiary removed' });
   } catch (error) {
-    console.error('Remove beneficiary error:', error);
-    return res.status(400).json({ success: false, message: error.message || 'Failed to remove beneficiary' });
+    return sendError(res, error, { logLabel: 'Remove beneficiary error', fallbackMessage: 'Failed to remove beneficiary' });
   }
 };
 

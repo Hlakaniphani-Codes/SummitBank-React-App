@@ -7,6 +7,7 @@ const {
   listDocuments,
   generateStatement,
 } = require('../utils/postgresStore');
+const { sendError } = require('../utils/apiError');
 
 exports.getPayees = async (req, res) => {
   const userId = req.userId;
@@ -30,8 +31,7 @@ exports.postPayee = async (req, res) => {
     const payee = await addPayee(userId, { name, category, accountIdentifier });
     return res.status(201).json({ success: true, payee });
   } catch (error) {
-    console.error('Add payee error:', error);
-    return res.status(400).json({ success: false, message: error.message || 'Failed to add payee' });
+    return sendError(res, error, { logLabel: 'Add payee error', fallbackMessage: 'Failed to add payee' });
   }
 };
 
@@ -83,8 +83,7 @@ exports.payBill = async (req, res) => {
 
     return res.status(201).json({ success: true, payment, message: 'Bill paid' });
   } catch (error) {
-    console.error('Pay bill error:', error);
-    return res.status(400).json({ success: false, message: error.message || 'Failed to pay bill' });
+    return sendError(res, error, { logLabel: 'Pay bill error', fallbackMessage: 'Failed to pay bill' });
   }
 };
 

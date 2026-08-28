@@ -97,6 +97,14 @@ function getSocket() {
       }
     });
 
+    globalSocket.on('account-update', (data) => {
+      console.log('🏦 WS event: account-update', data);
+      const callbacks = listeners.get('account-update');
+      if (callbacks) {
+        callbacks.forEach(cb => { try { cb(data); } catch(e) { console.error('WS callback error:', e); } });
+      }
+    });
+
     globalSocket.on('admin-notification', (data) => {
       console.log('📢 WS event: admin-notification', data);
       const callbacks = listeners.get('admin-notification');

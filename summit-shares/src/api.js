@@ -29,8 +29,12 @@ const headers = () => ({
 const handleResponse = async (res) => {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(data.message || 'Request failed');
-    if (data.code) err.code = data.code;
+    // Backend error envelope: { success:false, message, code, error:{ code, message, field } }
+    const detail = data.error || {};
+    const err = new Error(data.message || detail.message || 'Request failed');
+    err.code = data.code || detail.code || null;
+    err.field = detail.field || null;
+    err.status = res.status;
     if (data.waitSeconds !== undefined) err.waitSeconds = data.waitSeconds;
     throw err;
   }

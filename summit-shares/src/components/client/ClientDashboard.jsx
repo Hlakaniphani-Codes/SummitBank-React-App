@@ -1,5 +1,6 @@
 import React from 'react';
 import { useClient } from './ClientLayout';
+import { isRestrictedStatus, accountStatusLabel } from '../../utils/accountStatus';
 
 const ClientDashboard = () => {
   const {
@@ -23,8 +24,43 @@ const ClientDashboard = () => {
     return <div className="card-box">Loading your dashboard…</div>;
   }
 
+  const restrictedAccounts = (dashboardData.accounts || []).filter((a) => isRestrictedStatus(a.status));
+
   return (
     <div className="page-section active">
+      {/* Account restriction banner - mirrors the status the admin set and the
+          email the customer received; some transactions are unavailable. */}
+      {restrictedAccounts.length > 0 && (
+        <div
+          className="mb-4"
+          style={{
+            background: 'rgba(217,67,82,0.08)',
+            border: '1px solid rgba(217,67,82,0.3)',
+            borderRadius: 12,
+            padding: '12px 16px',
+            display: 'flex',
+            gap: 12,
+            alignItems: 'flex-start',
+            fontSize: 13,
+            color: '#8a2b36',
+          }}
+        >
+          <i className="fas fa-circle-exclamation" style={{ color: '#D94352', marginTop: 2 }}></i>
+          <div>
+            {restrictedAccounts.length === 1 ? (
+              <>
+                Your {restrictedAccounts[0].account_type === 'savings' ? 'Savings' : 'Checking'} account
+                {' '}(...{(restrictedAccounts[0].account_number || '').replace(/[^0-9]/g, '').slice(-4)}) is currently
+                {' '}<strong>{accountStatusLabel(restrictedAccounts[0].status).toLowerCase()}</strong>.
+              </>
+            ) : (
+              <>{restrictedAccounts.length} of your accounts are currently restricted.</>
+            )}
+            {' '}Some transactions are unavailable until the restriction is removed. Contact support if you believe this is a mistake.
+          </div>
+        </div>
+      )}
+
       {/* Total Balance Card */}
       <div className="total-balance-card mb-5">
         <div className="balance-left">
@@ -125,6 +161,16 @@ const ClientDashboard = () => {
                 <div>
                   <div className="card-label"><i className={`fas ${account.account_type === 'savings' ? 'fa-piggy-bank' : 'fa-wallet'}`}></i> {label} Account</div>
                   <div className="card-number">{displayNum}</div>
+                  {isRestrictedStatus(account.status) && (
+                    <span style={{
+                      display: 'inline-block', marginTop: 6, fontSize: 10, fontWeight: 700,
+                      textTransform: 'uppercase', letterSpacing: 0.5, padding: '2px 8px',
+                      borderRadius: 999, color: '#D94352', background: 'rgba(217,67,82,0.12)',
+                    }}>
+                      <i className="fas fa-lock" style={{ marginRight: 4 }}></i>
+                      {accountStatusLabel(account.status)}
+                    </span>
+                  )}
                 </div>
                 <button className="text-slate-400 hover:text-brand-gold text-sm" onClick={() => toggleBalance(account.account_type)}>
                   <i className={`fas ${balancesVisible[account.account_type] ? 'fa-eye' : 'fa-eye-slash'}`}></i>

@@ -3,6 +3,12 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { emitNotification, emitBalanceUpdate, emitTransaction, emitToUser, emitToAdmins } = require('../services/eventEmitter');
+const {
+  RestrictionError,
+  ERROR_CODES,
+  assertAccountUsable,
+  assertOwnerActive,
+} = require('./accountStatus');
 
 const ensureSchema = async () => {
   // no-op
@@ -144,7 +150,7 @@ const getDashboardData = async (userId) => {
     // closed accounts, don't silently zero out the total just because an account
     // is restricted (which the account cards below already show correctly).
     query("SELECT SUM(balance) AS total FROM accounts WHERE user_id = $1 AND status != 'closed'", [userId]),
-    query('SELECT id, account_number, account_type, balance, currency, routing_number, apy FROM accounts WHERE user_id = $1', [userId]),
+    query('SELECT id, account_number, account_type, balance, currency, routing_number, apy, status FROM accounts WHERE user_id = $1', [userId]),
     query(
       `SELECT transaction_id, description, amount, type, status, transaction_date
        FROM transactions
@@ -243,33 +249,34 @@ const transferMoney = async (userId, payload) => {
     await client.query('BEGIN');
 
     if (Number(payload.fromAccountId) === Number(payload.toAccountId)) {
-      throw new Error('Source and destination accounts must be different');
+      throw new RestrictionError(
+        ERROR_CODES.SAME_ACCOUNT,
+        'Source and destination accounts must be different.',
+        { field: 'destination_account' }
+      );
     }
 
-    // Check if source account is on hold or frozen
-    const holdCheck = await client.query(
-      'SELECT status FROM accounts WHERE id = $1 AND user_id = $2 FOR UPDATE',
-      [payload.fromAccountId, userId]
-    );
-    if (holdCheck.rows.length === 0) throw new Error('Source account not found');
-    if (holdCheck.rows[0].status === 'inactive' || holdCheck.rows[0].status === 'frozen') {
-      throw new Error('Source account is on hold or frozen. Transfers cannot be processed.');
-    }
+    // Both sides are validated: the sender must exist, belong to this customer,
+    // and be permitted to send; the destination must exist and be permitted to
+    // receive. A restricted account produces its real reason - never "not found".
+    const senderAccount = await assertAccountUsable(client, payload.fromAccountId, {
+      role: 'sender',
+      ownerId: userId,
+    });
+    const recipientAccount = await assertAccountUsable(client, payload.toAccountId, {
+      role: 'destination',
+    });
 
-    const fromAccRows = await client.query(
-      'SELECT balance, id FROM accounts WHERE id = $1 AND user_id = $2 AND status = $3 FOR UPDATE',
-      [payload.fromAccountId, userId, 'active']
-    );
-    if (fromAccRows.rows.length === 0) throw new Error('Source account not found or not active');
-
-    const toAccRows = await client.query(
-      'SELECT id, user_id, balance FROM accounts WHERE id = $1 AND status = $2 FOR UPDATE',
-      [payload.toAccountId, 'active']
-    );
-    if (toAccRows.rows.length === 0) throw new Error('Destination account not found');
+    // Keep the variable shapes the rest of this function already expects.
+    const fromAccRows = { rows: [{ balance: senderAccount.balance, id: senderAccount.id }] };
+    const toAccRows = { rows: [{ id: recipientAccount.id, user_id: recipientAccount.user_id, balance: recipientAccount.balance }] };
 
     const amount = Number(payload.amount);
-    if (Number(fromAccRows.rows[0].balance) < amount) throw new Error('Insufficient balance');
+    if (Number(fromAccRows.rows[0].balance) < amount) {
+      throw new RestrictionError(ERROR_CODES.INSUFFICIENT_FUNDS, 'Insufficient balance.', {
+        field: 'amount',
+      });
+    }
 
     await client.query(
       'UPDATE accounts SET balance = balance - $1 WHERE id = $2',
@@ -342,8 +349,8 @@ const transferMoney = async (userId, payload) => {
 
     // Emit real-time balance updates to both sender and receiver
     const [senderAccounts, receiverAccounts] = await Promise.all([
-      query('SELECT id, account_number, account_type, balance, routing_number, apy FROM accounts WHERE user_id = $1', [userId]),
-      query('SELECT id, account_number, account_type, balance, routing_number, apy FROM accounts WHERE user_id = $1', [toUserId])
+      query('SELECT id, account_number, account_type, balance, routing_number, apy, status FROM accounts WHERE user_id = $1', [userId]),
+      query('SELECT id, account_number, account_type, balance, routing_number, apy, status FROM accounts WHERE user_id = $1', [toUserId])
     ]);
     
     // Use emitToUser instead of emitBalanceUpdate for internal transfers
@@ -389,6 +396,9 @@ const setCardStatus = async (userId, cardId, nextStatus) => {
   const allowed = ['active', 'blocked'];
   if (!allowed.includes(nextStatus)) throw new Error('Invalid card status');
 
+  // A suspended / deactivated customer cannot manage cards.
+  await assertOwnerActive(userId);
+
   // Single atomic UPDATE guarded by status, so a concurrent admin expire/approve
   // can't be raced and silently overwritten between a check and a later write.
   const result = await query(
@@ -410,6 +420,10 @@ const setCardStatus = async (userId, cardId, nextStatus) => {
 const requestCard = async (userId, accountId, cardType = 'debit', cardNetwork = 'visa') => {
   const userRows = await query('SELECT first_name, last_name FROM users WHERE id = $1', [userId]);
   if (userRows.rows.length === 0) throw new Error('User not found');
+
+  // A new card is issued against this account - block the request when the
+  // customer or the funding account is under a restriction.
+  await assertAccountUsable(pool, accountId, { role: 'sender', ownerId: userId });
 
   const cardholderName = `${userRows.rows[0].first_name} ${userRows.rows[0].last_name}`.trim();
   const last4 = Math.floor(1000 + Math.random() * 9000).toString();
@@ -452,6 +466,7 @@ const listBeneficiaries = async (userId) => {
 };
 
 const addBeneficiary = async (userId, payload) => {
+  await assertOwnerActive(userId);
   const { name, bankName, accountIdentifier } = payload;
   const result = await query(
     'INSERT INTO beneficiaries (user_id, name, bank_name, account_identifier) VALUES ($1, $2, $3, $4) RETURNING id',
@@ -461,6 +476,7 @@ const addBeneficiary = async (userId, payload) => {
 };
 
 const removeBeneficiary = async (userId, beneficiaryId) => {
+  await assertOwnerActive(userId);
   const result = await query(
     'DELETE FROM beneficiaries WHERE id = $1 AND user_id = $2',
     [beneficiaryId, userId]
@@ -479,6 +495,7 @@ const listPayees = async (userId) => {
 };
 
 const addPayee = async (userId, payload) => {
+  await assertOwnerActive(userId);
   const { name, category, accountIdentifier } = payload;
   const result = await query(
     'INSERT INTO payees (user_id, name, category, account_identifier) VALUES ($1, $2, $3, $4) RETURNING id',
@@ -531,25 +548,19 @@ const payBill = async (userId, payload) => {
       accountId = accRows.rows[0].id;
     }
 
-    // Check if source account is on hold or frozen
-    const holdCheck2 = await client.query(
-      'SELECT status FROM accounts WHERE id = $1 AND user_id = $2 FOR UPDATE',
-      [accountId, userId]
-    );
-    if (holdCheck2.rows.length === 0) throw new Error('Source account not found');
-    if (holdCheck2.rows[0].status === 'inactive' || holdCheck2.rows[0].status === 'frozen') {
-      throw new Error('Source account is on hold or frozen. Bill payments cannot be processed.');
-    }
+    // Same restriction rules as any other outbound money movement.
+    const fromAccount = await assertAccountUsable(client, accountId, {
+      role: 'sender',
+      ownerId: userId,
+    });
 
-    const fromAcc = await client.query(
-      'SELECT balance FROM accounts WHERE id = $1 AND user_id = $2 AND status = $3 FOR UPDATE',
-      [accountId, userId, 'active']
-    );
-    if (fromAcc.rows.length === 0) throw new Error('Source account not found or not active');
-
-    const balance = Number(fromAcc.rows[0].balance);
+    const balance = Number(fromAccount.balance);
     const amountNum = Number(amount);
-    if (balance < amountNum) throw new Error('Insufficient balance');
+    if (balance < amountNum) {
+      throw new RestrictionError(ERROR_CODES.INSUFFICIENT_FUNDS, 'Insufficient balance.', {
+        field: 'amount',
+      });
+    }
 
     await client.query('UPDATE accounts SET balance = balance - $1 WHERE id = $2', [amountNum, accountId]);
 
@@ -583,7 +594,7 @@ const payBill = async (userId, payload) => {
 
     // Emit real-time balance update and transaction
     const updatedAccounts = await query(
-      'SELECT id, account_number, account_type, balance, routing_number, apy FROM accounts WHERE user_id = $1',
+      'SELECT id, account_number, account_type, balance, routing_number, apy, status FROM accounts WHERE user_id = $1',
       [userId]
     );
     emitToUser(userId, 'balance-update', { accounts: updatedAccounts.rows });
@@ -765,19 +776,24 @@ const createWireTransfer = async (userId, payload) => {
   try {
     await client.query('BEGIN');
 
-    // Validate account
-    const accRows = await client.query(
-      'SELECT id, balance FROM accounts WHERE id = $1 AND user_id = $2 AND status = $3 FOR UPDATE',
-      [payload.fromAccountId, userId, 'active']
-    );
-    if (accRows.rows.length === 0) throw new Error('Source account not found');
+    // Validate the funding account (exists, owned by this customer, may send).
+    const fundingAccount = await assertAccountUsable(client, payload.fromAccountId, {
+      role: 'sender',
+      ownerId: userId,
+    });
 
     const amount = Number(payload.amount);
     const fee = Number(payload.fee || 25);
     const totalDeduction = amount + fee;
-    const currentBalance = Number(accRows.rows[0].balance);
+    const currentBalance = Number(fundingAccount.balance);
 
-    if (currentBalance < totalDeduction) throw new Error('Insufficient balance (including wire fee)');
+    if (currentBalance < totalDeduction) {
+      throw new RestrictionError(
+        ERROR_CODES.INSUFFICIENT_FUNDS,
+        'Insufficient balance (including wire fee).',
+        { field: 'amount' }
+      );
+    }
 
     // Deduct funds from account
     await client.query('UPDATE accounts SET balance = balance - $1 WHERE id = $2', [totalDeduction, payload.fromAccountId]);
@@ -866,12 +882,12 @@ const createChequeDeposit = async (userId, payload, files) => {
   try {
     await client.query('BEGIN');
 
-    // Validate account
-    const accRows = await client.query(
-      'SELECT id FROM accounts WHERE id = $1 AND user_id = $2 AND status = $3',
-      [payload.accountId, userId, 'active']
-    );
-    if (accRows.rows.length === 0) throw new Error('Account not found');
+    // A cheque deposit credits this account - it must exist, belong to the
+    // customer, and not be under a restriction.
+    await assertAccountUsable(client, payload.accountId, {
+      role: 'sender',
+      ownerId: userId,
+    });
 
     const frontImageUrl = files?.front?.[0]?.path || '';
     const backImageUrl = files?.back?.[0]?.path || '';

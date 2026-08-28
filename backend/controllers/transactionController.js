@@ -1,4 +1,5 @@
 const { getTransactions, transferMoney } = require('../utils/postgresStore');
+const { sendError } = require('../utils/apiError');
 
 exports.getTransactions = async (req, res) => {
   const userId = req.userId;
@@ -21,8 +22,7 @@ exports.transfer = async (req, res) => {
     const result = await transferMoney(userId, { fromAccountId, toAccountId, amount, description, date });
     return res.json({ success: true, message: 'Transfer successful', transactionId: result.transactionId });
   } catch (error) {
-    console.error('Transfer error:', error);
-    return res.status(400).json({ success: false, message: error.message || 'Failed to process transfer' });
+    return sendError(res, error, { logLabel: 'Transfer error', fallbackMessage: 'Failed to process transfer' });
   }
 };
 

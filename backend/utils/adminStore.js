@@ -2,6 +2,7 @@
 const crypto = require('crypto');
 const { sendProfileApprovedEmail, sendAdminActionEmail } = require('../services/emailService');
 const { emitToUser, emitToAdmins, emitToAll, emitBalanceUpdate, emitNotification, emitTransaction } = require('../services/eventEmitter');
+const { ACCOUNT_STATUS_ACTION } = require('./accountStatus');
 
 // Admin-triggered notification emails are a side effect of an action that has
 // already succeeded in the DB - a real SMTP failure must never surface as if
@@ -359,7 +360,9 @@ const setAccountStatus = async (accountId, status, adminId) => {
   });
 
   // Emit real-time notification to the account owner
-  const accountStatusPhrase = { active: 'activated', inactive: 'placed on hold', closed: 'closed', frozen: 'frozen' }[status] || status;
+  // Wording comes from utils/accountStatus.js so the account-status email a
+  // customer receives always matches what a blocked transaction tells them.
+  const accountStatusPhrase = ACCOUNT_STATUS_ACTION[status] || status;
   const accountOwner = await pool.query('SELECT user_id FROM accounts WHERE id = $1', [accountId]);
   if (accountOwner.rows.length > 0) {
     const ownerId = accountOwner.rows[0].user_id;

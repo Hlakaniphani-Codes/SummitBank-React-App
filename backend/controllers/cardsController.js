@@ -5,6 +5,7 @@ const {
   createNotification,
 } = require('../utils/postgresStore');
 const { emitToUser } = require('../services/eventEmitter');
+const { sendError } = require('../utils/apiError');
 
 exports.viewCard = async (req, res) => {
   const userId = req.userId;
@@ -38,8 +39,7 @@ exports.blockCard = async (req, res) => {
     
     return res.json({ success: true, card, message: 'Card blocked' });
   } catch (error) {
-    console.error('Block card error:', error);
-    return res.status(400).json({ success: false, message: error.message || 'Failed to block card' });
+    return sendError(res, error, { logLabel: 'Block card error', fallbackMessage: 'Failed to block card' });
   }
 };
 
@@ -61,8 +61,7 @@ exports.activateCard = async (req, res) => {
     
     return res.json({ success: true, card, message: 'Card activated' });
   } catch (error) {
-    console.error('Activate card error:', error);
-    return res.status(400).json({ success: false, message: error.message || 'Failed to activate card' });
+    return sendError(res, error, { logLabel: 'Activate card error', fallbackMessage: 'Failed to activate card' });
   }
 };
 
@@ -87,7 +86,6 @@ exports.requestNewCard = async (req, res) => {
     
     return res.status(201).json({ success: true, card });
   } catch (error) {
-    console.error('Request card error:', error);
-    return res.status(400).json({ success: false, message: error.message });
+    return sendError(res, error, { logLabel: 'Request card error', fallbackMessage: 'Failed to request card' });
   }
 };

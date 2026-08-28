@@ -2,6 +2,7 @@ const {
   createChequeDeposit,
   listCustomerChequeDeposits,
 } = require('../utils/postgresStore');
+const { sendError } = require('../utils/apiError');
 
 exports.depositCheque = async (req, res) => {
   const userId = req.userId;
@@ -16,8 +17,7 @@ exports.depositCheque = async (req, res) => {
     const result = await createChequeDeposit(userId, payload, files);
     return res.status(201).json({ success: true, deposit: result, message: 'Cheque deposit submitted. Pending review.' });
   } catch (error) {
-    console.error('Deposit cheque error:', error);
-    return res.status(400).json({ success: false, message: error.message || 'Failed to deposit cheque' });
+    return sendError(res, error, { logLabel: 'Deposit cheque error', fallbackMessage: 'Failed to deposit cheque' });
   }
 };
 

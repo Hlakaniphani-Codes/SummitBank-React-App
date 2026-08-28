@@ -1,6 +1,7 @@
 import React from 'react';
 import { useClient } from './ClientLayout';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
+import { isRestrictedStatus, accountStatusLabel } from '../../utils/accountStatus';
 
 const ClientTransfer = () => {
   const {
@@ -30,7 +31,10 @@ const ClientTransfer = () => {
                 <select name="fromAccount" required onChange={(e) => setSelectedFromAccount(e.target.value)}>
                   <option value="">Select account...</option>
                   {dashboardData?.accounts?.map(acc => (
-                    <option key={acc.id} value={acc.id}>{acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number}) - {formatCurrency(acc.balance)}</option>
+                    <option key={acc.id} value={acc.id} disabled={isRestrictedStatus(acc.status)}>
+                      {acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number}) - {formatCurrency(acc.balance)}
+                      {isRestrictedStatus(acc.status) ? ` — ${accountStatusLabel(acc.status)}` : ''}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -39,7 +43,10 @@ const ClientTransfer = () => {
                 <select name="toAccount" required>
                   <option value="">Select account...</option>
                   {dashboardData?.accounts?.filter(acc => String(acc.id) !== String(selectedFromAccount)).map(acc => (
-                    <option key={acc.id} value={acc.id}>{acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number})</option>
+                    <option key={acc.id} value={acc.id} disabled={isRestrictedStatus(acc.status)}>
+                      {acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number})
+                      {isRestrictedStatus(acc.status) ? ` — ${accountStatusLabel(acc.status)}` : ''}
+                    </option>
                   ))}
                 </select>
               </div>

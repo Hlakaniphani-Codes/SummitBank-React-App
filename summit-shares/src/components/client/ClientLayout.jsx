@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useRealtime } from '../../hooks/useRealtime';
+import { isRestrictionError } from '../../utils/accountStatus';
 
 // ---- Import Modal Components ----
 import AddBeneficiaryModal from '../../components/AddBeneficiaryModal';
@@ -81,6 +82,10 @@ const ClientLayout = () => {
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimeoutRef = useRef(null);
 
+  // Account-restriction failures (frozen / on hold / suspended destination or
+  // sender) get a modal with the real reason from the API, not a fleeting toast.
+  const [restrictionModal, setRestrictionModal] = useState(null); // { title, message } | null
+
   const [signOutModalOpen, setSignOutModalOpen] = useState(false);
   const [showBeneficiaryModal, setShowBeneficiaryModal] = useState(false);
   const [showPayeeModal, setShowPayeeModal] = useState(false);
@@ -120,6 +125,18 @@ const ClientLayout = () => {
   const hideToast = () => {
     setToastVisible(false);
     clearTimeout(toastTimeoutRef.current);
+  };
+
+  // Central handler for a failed action. If the backend says the failure is an
+  // account restriction, surface the exact reason in a modal; otherwise fall
+  // back to the normal toast. `title` tailors the modal heading per action.
+  const reportActionError = (err, { title = 'Action Unavailable' } = {}) => {
+    const message = (err && err.message) || 'Something went wrong. Please try again.';
+    if (isRestrictionError(err)) {
+      setRestrictionModal({ title, message });
+    } else {
+      showToast(message);
+    }
   };
 
   // ---- NAVIGATION ----
@@ -219,7 +236,7 @@ const ClientLayout = () => {
       showToast(result.message || 'Card updated');
       await refreshDashboard();
     } catch (err) {
-      showToast(err.message || 'Card action failed');
+      reportActionError(err, { title: 'Card Action Unavailable' });
     }
   };
 
@@ -234,7 +251,7 @@ const ClientLayout = () => {
       showToast('Card requested successfully');
       await refreshDashboard();
     } catch (err) {
-      showToast(err.message);
+      reportActionError(err, { title: 'Card Request Unavailable' });
     }
   };
 
@@ -256,7 +273,7 @@ const ClientLayout = () => {
       form.reset();
       await refreshDashboard();
     } catch (err) {
-      showToast(err.message);
+      reportActionError(err, { title: 'Transfer Unavailable' });
     }
   };
 
@@ -278,7 +295,7 @@ const ClientLayout = () => {
       form.reset();
       await refreshDashboard();
     } catch (err) {
-      showToast(err.message);
+      reportActionError(err, { title: 'Payment Unavailable' });
     }
   };
 
@@ -290,7 +307,7 @@ const ClientLayout = () => {
       showToast('Beneficiary deleted');
       loadBeneficiaries();
     } catch (err) {
-      showToast(err.message);
+      reportActionError(err, { title: 'Action Unavailable' });
     }
   };
 
@@ -582,7 +599,7 @@ const ClientLayout = () => {
       setWireFormOpen(false);
       loadWires();
     } catch (err) {
-      showToast(err.message || 'Failed to create wire transfer');
+      reportActionError(err, { title: 'Wire Transfer Unavailable' });
     }
   };
 
@@ -597,7 +614,7 @@ const ClientLayout = () => {
       setChequeFormOpen(false);
       loadChequeDeposits();
     } catch (err) {
-      showToast(err.message || 'Failed to deposit cheque');
+      reportActionError(err, { title: 'Deposit Unavailable' });
     }
   };
 
@@ -749,6 +766,16 @@ const ClientLayout = () => {
     return unsub;
   }, [onEvent, refreshDashboard]);
 
+  // An admin froze / held / closed / reopened one of this customer's accounts -
+  // pull the authoritative status straight away so the dashboard badge, banner
+  // and transfer screen reflect it without a manual refresh.
+  useEffect(() => {
+    const unsub = onEvent('account-update', () => {
+      refreshDashboard();
+    });
+    return unsub;
+  }, [onEvent, refreshDashboard]);
+
   useEffect(() => {
     const POLL_INTERVAL = 30000;
     let intervalId = setInterval(() => {
@@ -848,6 +875,7 @@ const ClientLayout = () => {
     dashboardError,
     refreshDashboard,
     showToast,
+    reportActionError,
     formatCurrency,
     copyText,
     toggleBalance,
@@ -1151,6 +1179,20 @@ const ClientLayout = () => {
           <i className="fas fa-check-circle"></i>
           <span id="toastText">{toastMessage}</span>
           <button className="close-toast" onClick={hideToast}><i className="fas fa-times"></i></button>
+        </div>
+
+        {/* ---- ACCOUNT RESTRICTION MODAL ---- */}
+        <div className={`modal-overlay ${restrictionModal ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setRestrictionModal(null); }}>
+          <div className="modal-box">
+            <div className="modal-title">
+              <i className="fas fa-triangle-exclamation" style={{ color: '#D94352', marginRight: 8 }}></i>
+              {restrictionModal?.title || 'Action Unavailable'}
+            </div>
+            <div className="modal-sub">{restrictionModal?.message}</div>
+            <div className="modal-actions">
+              <button className="btn-gold" onClick={() => setRestrictionModal(null)}>Got it</button>
+            </div>
+          </div>
         </div>
 
         {/* ---- SIGN OUT MODAL ---- */}
