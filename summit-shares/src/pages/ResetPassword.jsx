@@ -34,10 +34,10 @@ const ResetPassword = () => {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, newPassword }),
+        body: JSON.stringify({ token, newPassword, confirmPassword }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Something went wrong');
+      if (!res.ok) throw new Error(data.message || data.errors?.[0]?.msg || 'Something went wrong');
       setMessage('Password reset successfully! Redirecting to login...');
       setTimeout(() => navigate('/'), 3000); // redirect to home
     } catch (err) {

@@ -20,7 +20,7 @@ const ForgotPassword = () => {
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Something went wrong');
+      if (!res.ok) throw new Error(data.message || data.errors?.[0]?.msg || 'Something went wrong');
       setMessage(data.message);
       setTimeout(() => navigate('/'), 3000); // redirect to home (LandingPage)
     } catch (err) {
