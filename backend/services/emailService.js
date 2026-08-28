@@ -1,10 +1,14 @@
-const nodemailer = require('nodemailer');
+const fs = require('fs');
 const path = require('path');
+const { Resend } = require('resend');
 const pool = require('../config/db');
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@mysummshares.com';
 const LOGO_PATH = path.join(__dirname, '../assets/logo.jpeg');
 const LOGO_CID = 'summitshareslogo';
+// Read once at startup and reused for every send, rather than hitting disk
+// on every email.
+const LOGO_BASE64 = fs.readFileSync(LOGO_PATH).toString('base64');
 
 // Shared branded header used at the top of every outgoing email - same dark
 // mark (#0B0B0B) and gold/white logo used across the site's own nav/sidebar.
@@ -15,19 +19,24 @@ const renderEmailHeader = (title) => `
   </div>
 `;
 
-// The committed .env ships documented placeholder values, not real credentials -
-// treat those the same as "unset" so a fresh checkout doesn't attempt (and fail)
-// a real SMTP handshake on every admin action.
-const PLACEHOLDER_SMTP_VALUES = new Set(['your-email@gmail.com', 'your-app-specific-password']);
-const isSmtpConfigured = () => {
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!user || !pass) return false;
-  if (PLACEHOLDER_SMTP_VALUES.has(user) || PLACEHOLDER_SMTP_VALUES.has(pass)) return false;
+// Emails go through Resend's HTTPS API rather than raw SMTP - Render's free
+// tier blocks outbound traffic on SMTP ports (25/465/587) entirely, so a
+// direct SMTP connection that works locally silently fails in production.
+// An HTTPS API call isn't subject to that restriction.
+const PLACEHOLDER_RESEND_VALUES = new Set(['re_your_api_key_here', '']);
+const isResendConfigured = () => {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false;
+  if (PLACEHOLDER_RESEND_VALUES.has(key)) return false;
   return true;
 };
 
-let transporter = null;
+let resendClient = null;
+const getResendClient = () => {
+  if (resendClient) return resendClient;
+  resendClient = new Resend(process.env.RESEND_API_KEY);
+  return resendClient;
+};
 
 const upsertEmailNotification = async ({ userId, eventType, referenceId, recipientEmail, subject, htmlBody, textBody }) => {
   if (!userId || !eventType || referenceId === undefined || referenceId === null || !recipientEmail || !subject) {
@@ -169,28 +178,36 @@ const sendEmail = async (to, subject, html, text = '', options = {}) => {
     textBody: text,
   });
 
-  if (!isSmtpConfigured()) {
+  if (!isResendConfigured()) {
     console.log(`[EMAIL PLACEHOLDER] To: ${to}, Subject: ${subject}`);
     console.log(`[EMAIL PLACEHOLDER] Body: ${text || html}`);
-    await markEmailNotificationStatus(notificationId, 'failed', 'SMTP credentials not configured', false);
-    throw new Error('SMTP credentials not configured');
+    await markEmailNotificationStatus(notificationId, 'failed', 'RESEND_API_KEY not configured', false);
+    throw new Error('RESEND_API_KEY not configured');
   }
 
   try {
-    const transport = getTransporter();
-    const info = await transport.sendMail({
-      from: `"Summit Shares Support" <${fromAddress}>`,
+    const resend = getResendClient();
+    const { data, error } = await resend.emails.send({
+      from: `Summit Shares Support <${fromAddress}>`,
       to,
       subject,
-      text: text || '',
+      text: text || undefined,
       html,
       attachments: [
-        { filename: 'logo.jpeg', path: LOGO_PATH, cid: LOGO_CID },
+        { filename: 'logo.jpeg', content: LOGO_BASE64, content_id: LOGO_CID },
       ],
     });
-    console.log(`[EMAIL SENT] To: ${to}, Subject: "${subject}", MessageID: ${info.messageId}`);
+
+    if (error) {
+      // Resend returns API-level failures (bad key, unverified domain, etc.)
+      // in this field rather than throwing - normalize to a thrown Error so
+      // every caller's existing try/catch keeps working unchanged.
+      throw new Error(error.message || JSON.stringify(error));
+    }
+
+    console.log(`[EMAIL SENT] To: ${to}, Subject: "${subject}", MessageID: ${data.id}`);
     await markEmailNotificationStatus(notificationId, 'sent', null, false);
-    return info;
+    return { messageId: data.id };
   } catch (error) {
     console.error(`[EMAIL ERROR] To: ${to}, Subject: "${subject}", Error: ${error.message}`);
     await markEmailNotificationStatus(notificationId, 'failed', error.message, true);
