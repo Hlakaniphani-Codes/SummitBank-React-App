@@ -36,7 +36,24 @@ import ClientSupport from './components/client/ClientSupport';
 
 const ProtectedRoute = ({ children }) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  return token ? children : <Navigate to="/" replace />;
+  if (!token) return <Navigate to="/" replace />;
+
+  // A valid token alone isn't enough - it must belong to a customer account.
+  // Without this, an admin/super_admin's own token (still valid after they
+  // navigate here directly, via back button, a stale tab, etc.) would render
+  // the client dashboard shell for their admin account instead of being sent
+  // to the admin portal where that role actually belongs.
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    user = null;
+  }
+  if (user && (user.role === 'admin' || user.role === 'super_admin')) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  return children;
 };
 
 export default function App() {
