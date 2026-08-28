@@ -2,55 +2,6 @@ const { generateDemoHistory } = require('../services/demoHistoryGenerator/index'
 const { createAuditLog } = require('../utils/adminStore');
 
 // ============================================================
-// POST /api/admin/customers/:id/generate-history
-// ============================================================
-exports.generateCustomerHistory = async (req, res) => {
-  const { id } = req.params;
-  const adminId = req.userId;
-  const config = req.body;
-
-  // Validate required fields
-  if (!config) {
-    return res.status(400).json({ success: false, message: 'Configuration is required' });
-  }
-
-  // Set progress callback for SSE or just return at end
-  const progressUpdates = [];
-  const onProgress = (update) => {
-    progressUpdates.push(update);
-  };
-
-  try {
-    const result = await generateDemoHistory(Number(id), config, onProgress);
-
-    await createAuditLog({
-      adminId,
-      action: 'generate_demo_history',
-      entityType: 'user',
-      entityId: Number(id),
-      description: `Generated demo financial history for customer #${id}`,
-      metadata: { config: { ...config, openingBalance: config.openingBalance, targetEndingBalance: config.targetEndingBalance } },
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-
-    return res.json({
-      success: true,
-      message: 'Demo financial history generated successfully',
-      progress: progressUpdates,
-      ...result,
-    });
-  } catch (error) {
-    console.error('Generate demo history error:', error);
-    return res.status(400).json({
-      success: false,
-      message: error.message || 'Failed to generate demo history',
-      progress: progressUpdates,
-    });
-  }
-};
-
-// ============================================================
 // POST /api/admin/customers/:id/generate-history/stream (SSE version)
 // ============================================================
 exports.generateCustomerHistoryStream = async (req, res) => {

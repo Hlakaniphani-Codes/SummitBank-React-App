@@ -4,6 +4,7 @@ import LandingPage from './pages/LandingPage';
 import EnrollPage from './pages/EnrollPage';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyOtpPage from './pages/VerifyOtpPage';
 
 // Admin imports
 import AdminLayout from './components/admin/AdminLayout';
@@ -156,6 +157,7 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-otp" element={<VerifyOtpPage />} />
         <Route path="/enroll" element={<EnrollPage />} />
 
         {/* Client Portal - NEW STRUCTURE */}

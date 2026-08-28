@@ -102,7 +102,7 @@ const AdminDashboardPage = () => {
           <div className="card-header">
             <h3><i className="fas fa-bolt" style={{ color: '#C9A84C', marginRight: 8 }}></i> Quick Actions</h3>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div className="admin-grid-2" style={{ gap: 8 }}>
             <a href="/admin/customers" className="admin-btn admin-btn-secondary" style={{ justifyContent: 'center', padding: '12px 8px', textDecoration: 'none' }}>
               <i className="fas fa-users"></i> Customers
             </a>

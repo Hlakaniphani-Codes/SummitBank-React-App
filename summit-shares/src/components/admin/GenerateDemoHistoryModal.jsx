@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generateDemoHistory } from '../../api/admin';
+import { generateDemoHistoryStream } from '../../api/admin';
 
 const FINANCIAL_PROFILES = [
   { value: 'standard', label: 'Standard Customer' },
@@ -99,7 +99,9 @@ const GenerateDemoHistoryModal = ({ customerId, customerName, onClose, onSuccess
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       };
-      const result = await generateDemoHistory(customerId, payload);
+      const result = await generateDemoHistoryStream(customerId, payload, (update) => {
+        setProgress(update);
+      });
       setProgress({ step: 'complete', message: 'Financial history generated successfully!', percent: 100 });
       if (onSuccess) onSuccess(result);
       if (showToast) showToast('Financial history generated successfully!');

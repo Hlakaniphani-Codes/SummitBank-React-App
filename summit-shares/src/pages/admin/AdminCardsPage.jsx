@@ -168,7 +168,7 @@ const AdminCardsPage = () => {
           <h3>All Cards</h3>
           <span style={{ fontSize: 11, color: '#6b6b6b' }}>{cards.length} cards</span>
         </div>
-        <div className="admin-table-wrap">
+        <div className="admin-table-wrap responsive">
           <table className="admin-table">
             <thead>
               <tr><th>Customer</th><th>Type</th><th>Network</th><th>Last4</th><th>Account</th><th>Status</th><th>Actions</th></tr>
@@ -179,14 +179,14 @@ const AdminCardsPage = () => {
               ) : (
                 cards.map((c) => (
                   <tr key={c.id}>
-                    <td style={{ fontWeight: 600 }}>{c.first_name} {c.last_name}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{c.card_type}</td>
-                    <td style={{ textTransform: 'uppercase' }}>{c.card_network}</td>
-                    <td>**** {c.last4}</td>
-                    <td>{c.account_type || '—'}</td>
-                    <td>{getStatusBadge(c.status)}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    <td data-label="Customer" style={{ fontWeight: 600 }}>{c.first_name} {c.last_name}</td>
+                    <td data-label="Type" style={{ textTransform: 'capitalize' }}>{c.card_type}</td>
+                    <td data-label="Network" style={{ textTransform: 'uppercase' }}>{c.card_network}</td>
+                    <td data-label="Last4">**** {c.last4}</td>
+                    <td data-label="Account">{c.account_type || '—'}</td>
+                    <td data-label="Status">{getStatusBadge(c.status)}</td>
+                    <td data-label="Actions">
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {c.status === 'pending' && (
                           <>
                             <button className="admin-btn admin-btn-success admin-btn-xs" onClick={() => openModal('approve', c)}>Approve</button>

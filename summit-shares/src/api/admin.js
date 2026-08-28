@@ -183,14 +183,56 @@ export const sendCustomerEmail = async (id, subject, message) => {
   return handleResponse(res);
 };
 
+// Sends an in-app notification (bell icon, persisted + pushed live if the user is online)
+export const sendCustomerNotification = async (userId, title, description) => {
+  const res = await fetch(`${API_BASE}/notifications/popup`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ userId, title, description }),
+  });
+  return handleResponse(res);
+};
+
 // ---- DEMO HISTORY GENERATION ----
-export const generateDemoHistory = async (customerId, config) => {
-  const res = await fetch(`${API_BASE}/customers/${customerId}/generate-history`, {
+// Streams live progress events (SSE) while the history is being generated,
+// instead of leaving the caller blind until the whole operation finishes.
+export const generateDemoHistoryStream = async (customerId, config, onProgress) => {
+  const res = await fetch(`${API_BASE}/customers/${customerId}/generate-history/stream`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify(config),
   });
-  return handleResponse(res);
+  if (!res.ok || !res.body) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'Failed to generate demo history');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const events = buffer.split('\n\n');
+    buffer = events.pop(); // last chunk may be incomplete, keep it for next read
+
+    for (const raw of events) {
+      const eventLine = raw.split('\n').find(l => l.startsWith('event:'));
+      const dataLine = raw.split('\n').find(l => l.startsWith('data:'));
+      if (!dataLine) continue;
+      const payload = JSON.parse(dataLine.slice(5).trim());
+      const eventType = eventLine ? eventLine.slice(6).trim() : 'progress';
+
+      if (eventType === 'done') return payload;
+      if (eventType === 'error') throw new Error(payload.message || 'Failed to generate demo history');
+      if (onProgress) onProgress(payload);
+    }
+  }
+
+  throw new Error('Connection closed before generation finished');
 };
 
 // ---- ACCOUNTS ----
@@ -288,30 +330,6 @@ export const freezeAccount = async (id) => {
 export const unfreezeAccount = async (id) => {
   const res = await fetch(`${API_BASE}/accounts/${id}/unfreeze`, {
     method: 'POST',
-    headers: headers(),
-  });
-  return handleResponse(res);
-};
-
-export const holdAccount = async (id) => {
-  const res = await fetch(`${API_BASE}/accounts/${id}/hold`, {
-    method: 'POST',
-    headers: headers(),
-  });
-  return handleResponse(res);
-};
-
-export const removeAccountHold = async (id) => {
-  const res = await fetch(`${API_BASE}/accounts/${id}/remove-hold`, {
-    method: 'POST',
-    headers: headers(),
-  });
-  return handleResponse(res);
-};
-
-export const deleteAccount = async (id) => {
-  const res = await fetch(`${API_BASE}/accounts/${id}`, {
-    method: 'DELETE',
     headers: headers(),
   });
   return handleResponse(res);

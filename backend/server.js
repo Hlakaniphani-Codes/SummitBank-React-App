@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const winston = require('winston');
@@ -65,6 +66,10 @@ console.log('✅ WebSocket (Socket.IO) real-time engine initialized');
 
 // ----- Security Middleware -----
 app.use(helmet());
+// Skip compression for SSE streams - gzip buffers output, which defeats live progress events
+app.use(compression({
+  filter: (req, res) => !req.path.endsWith('/stream') && compression.filter(req, res),
+}));
 
 app.use(cors({
   origin: (origin, callback) => {

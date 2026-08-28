@@ -10,6 +10,10 @@ html, body, #root {
   background: #ffffff;
 }
 
+html, body {
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;

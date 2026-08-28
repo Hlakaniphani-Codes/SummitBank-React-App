@@ -39,9 +39,6 @@ const {
   reopenAccount,
   freezeAccount,
   unfreezeAccount,
-  holdAccount,
-  removeHold,
-  deleteAccount,
   getAccountTransactions,
   getAccountDetails,
   adjustAvailableBalance,
@@ -92,7 +89,6 @@ const {
 } = require('../controllers/adminAudit');
 
 const {
-  generateCustomerHistory,
   generateCustomerHistoryStream,
 } = require('../controllers/demoHistoryController');
 
@@ -218,7 +214,6 @@ router.get('/customers/:id/activity', getCustomerActivity);
 // ============================================================
 // DEMO FINANCIAL HISTORY GENERATION
 // ============================================================
-router.post('/customers/:id/generate-history', generateCustomerHistory);
 router.post('/customers/:id/generate-history/stream', generateCustomerHistoryStream);
 
 // ============================================================
@@ -253,9 +248,6 @@ router.post('/accounts/:id/close', closeAccount);
 router.post('/accounts/:id/reopen', reopenAccount);
 router.post('/accounts/:id/freeze', freezeAccount);
 router.post('/accounts/:id/unfreeze', unfreezeAccount);
-router.post('/accounts/:id/hold', holdAccount);
-router.post('/accounts/:id/remove-hold', removeHold);
-router.delete('/accounts/:id', deleteAccount);
 router.get('/accounts/:id/transactions', getAccountTransactions);
 router.get('/accounts/:id/details', getAccountDetails);
 router.put('/accounts/:id/available-balance', adjustAvailableBalance);

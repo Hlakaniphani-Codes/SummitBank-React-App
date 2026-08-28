@@ -21,7 +21,6 @@ const AdminSidebar = ({ isOpen, onClose, currentPath, onLogout, user }) => {
         className={`admin-sidebar-overlay ${isOpen ? 'active' : ''}`}
         onClick={onClose}
         style={{
-          display: 'none',
           position: 'fixed',
           inset: 0,
           background: 'rgba(0,0,0,0.5)',
@@ -32,7 +31,7 @@ const AdminSidebar = ({ isOpen, onClose, currentPath, onLogout, user }) => {
 
       {/* Sidebar */}
       <aside
-        className="admin-sidebar"
+        className={`admin-sidebar ${isOpen ? 'open' : ''}`}
         style={{
           position: 'fixed',
           top: 0,
@@ -51,15 +50,13 @@ const AdminSidebar = ({ isOpen, onClose, currentPath, onLogout, user }) => {
       >
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 28, borderBottom: '1px solid #1a1a1a', marginBottom: 24 }}>
-          <svg viewBox="0 0 120 40" fill="none" style={{ height: 34, width: 'auto', flexShrink: 0 }}>
+          <svg viewBox="0 0 170 40" fill="none" style={{ height: 34, width: 'auto', flexShrink: 0 }}>
             <path d="M10 30 L30 10 L50 30 L40 30 L30 18 L20 30 L10 30Z" fill="#C9A84C" />
-            <path d="M70 30 L90 10 L110 30 L100 30 L90 18 L80 30 L70 30Z" fill="#C9A84C" />
             <rect x="32" y="24" width="2" height="6" fill="#C9A84C" />
             <rect x="34" y="26" width="2" height="4" fill="#C9A84C" />
             <rect x="36" y="28" width="2" height="2" fill="#C9A84C" />
             <text x="46" y="26" fontFamily="Montserrat, sans-serif" fontWeight="800" fontSize="20" fill="#FFFFFF" letterSpacing="2">SUMMIT</text>
             <text x="46" y="36" fontFamily="Inter, sans-serif" fontWeight="500" fontSize="8" fill="#6b6b6b" letterSpacing="3">SHARES</text>
-            <circle cx="120" cy="20" r="4" fill="#C9A84C" opacity="0.3" />
           </svg>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#C9A84C', textTransform: 'uppercase', letterSpacing: 1 }}>Admin Panel</div>

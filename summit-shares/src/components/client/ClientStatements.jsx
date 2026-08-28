@@ -4,9 +4,8 @@ import { useClient } from './ClientLayout';
 const ClientStatements = () => {
   const {
     documents,
-    formatCurrency,
-    showToast,
     setShowStatementModal,
+    handleDownloadDocument,
   } = useClient();
 
   const statements = documents.filter(d => d.doc_type === 'statement');
@@ -62,7 +61,7 @@ const ClientStatements = () => {
                     <p className="text-xs text-gray-500 mt-0.5">{doc.period_start} — {doc.period_end}</p>
                   </div>
                   <button
-                    onClick={() => showToast('Downloading...')}
+                    onClick={() => handleDownloadDocument(doc)}
                     className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-100 transition"
                     title="Download"
                   >
@@ -101,7 +100,7 @@ const ClientStatements = () => {
                     <p className="text-xs text-gray-500 mt-0.5">{doc.period_start} — {doc.period_end}</p>
                   </div>
                   <button
-                    onClick={() => showToast('Downloading...')}
+                    onClick={() => handleDownloadDocument(doc)}
                     className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-100 transition"
                     title="Download"
                   >

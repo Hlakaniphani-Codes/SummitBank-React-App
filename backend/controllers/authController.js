@@ -2,7 +2,8 @@ const pool = require('../config/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const { sendOtpEmail, sendPasswordResetEmail } = require('../services/emailService');
+const otpService = require('../services/otpService');
 
 // Build JWT token
 const buildToken = (user) => {
@@ -20,16 +21,13 @@ const buildToken = (user) => {
   );
 };
 
-// Nodemailer setup
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: process.env.SMTP_PORT || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Masks an email for display during the OTP step, e.g. "robert@gmail.com" -> "r****@gmail.com"
+const maskEmail = (email) => {
+  const [local, domain] = String(email).split('@');
+  if (!domain) return email;
+  const visible = local.slice(0, 1);
+  return `${visible}${'*'.repeat(Math.max(local.length - 1, 4))}@${domain}`;
+};
 
 // ============================================================
 // REGISTER – only creates a pending application
@@ -165,15 +163,109 @@ exports.login = async (req, res) => {
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) throw new Error('Invalid email or password');
 
-    // Generate token
-    const token = buildToken(user);
+    // Admins skip 2FA entirely - this endpoint is also used by the admin/super_admin
+    // roles interchangeably with the dedicated /api/admin/login, so the exemption has
+    // to be role-based here too, not just "only reachable via the admin route".
+    const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+    if (isAdmin) {
+      const token = buildToken(user);
+      await pool.query(
+        `INSERT INTO login_history (user_id, status, ip_address, user_agent)
+         VALUES ($1, 'success', $2, $3)`,
+        [user.id, req.ip, req.headers['user-agent']]
+      );
+      return res.json({
+        success: true,
+        message: 'Login successful',
+        token,
+        user: {
+          id: user.id,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          email: user.email,
+          role: user.role,
+        },
+      });
+    }
 
-    // Log success
+    // Customers: password verified, but no token yet - require an emailed OTP first.
+    // The OTP row exists regardless of whether delivery actually succeeds (SMTP being
+    // down/unconfigured must not block the response - the customer can still use
+    // Resend once it's fixed, same as how a real provider outage would be handled).
+    const code = await otpService.createOtp(user.id, 'login');
+    try {
+      await sendOtpEmail(user, code);
+    } catch (emailError) {
+      console.error('[EMAIL ERROR] Failed to send login OTP email:', emailError.message);
+    }
+
+    return res.json({
+      success: true,
+      otpRequired: true,
+      email: user.email,
+      maskedEmail: maskEmail(user.email),
+      message: 'Enter the verification code sent to your email.',
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    // Log failed attempt
+    if (email) {
+      await pool.query(
+        `INSERT INTO login_history (user_id, status, failure_reason, ip_address, user_agent)
+         SELECT id, 'failed', $1, $2, $3 FROM users WHERE email = $4`,
+        [error.message, req.ip, req.headers['user-agent'], email]
+      ).catch(() => {});
+    }
+    return res.status(401).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================================
+// VERIFY LOGIN OTP - second step of customer login
+// ============================================================
+exports.verifyLoginOtp = async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) {
+    return res.status(400).json({ success: false, message: 'Email and code are required' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, first_name, last_name, email, role FROM users WHERE email = $1`,
+      [email]
+    );
+    if (rows.length === 0) {
+      return res.status(401).json({ success: false, message: 'The verification code is incorrect. Please try again.' });
+    }
+    const user = rows[0];
+
+    const result = await otpService.verifyOtp(user.id, code, 'login');
+
+    if (!result.ok) {
+      await pool.query(
+        `INSERT INTO login_history (user_id, status, failure_reason, ip_address, user_agent)
+         VALUES ($1, 'failed', $2, $3, $4)`,
+        [user.id, `OTP: ${result.reason}`, req.ip, req.headers['user-agent']]
+      ).catch(() => {});
+      await pool.query(
+        `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, description, ip_address, user_agent)
+         VALUES ($1, 'otp_failed', 'auth', $1, $2, $3, $4)`,
+        [user.id, `OTP verification failed (${result.reason})`, req.ip, req.headers['user-agent']]
+      ).catch(() => {});
+      return res.status(401).json({ success: false, message: result.message });
+    }
+
+    const token = buildToken(user);
     await pool.query(
       `INSERT INTO login_history (user_id, status, ip_address, user_agent)
        VALUES ($1, 'success', $2, $3)`,
       [user.id, req.ip, req.headers['user-agent']]
     );
+    await pool.query(
+      `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, description, ip_address, user_agent)
+       VALUES ($1, 'otp_verified', 'auth', $1, 'OTP verified, login completed', $2, $3)`,
+      [user.id, req.ip, req.headers['user-agent']]
+    ).catch(() => {});
 
     return res.json({
       success: true,
@@ -188,16 +280,42 @@ exports.login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
-    // Log failed attempt
-    if (email) {
-      await pool.query(
-        `INSERT INTO login_history (user_id, status, failure_reason, ip_address, user_agent)
-         SELECT id, 'failed', $1, $2, $3 FROM users WHERE email = $4`,
-        [error.message, req.ip, req.headers['user-agent'], email]
-      ).catch(() => {});
+    console.error('Verify OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to verify code right now. Please try again.' });
+  }
+};
+
+// ============================================================
+// RESEND LOGIN OTP
+// ============================================================
+exports.resendLoginOtp = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Email is required' });
+  }
+
+  try {
+    const { rows } = await pool.query(`SELECT id, first_name, email FROM users WHERE email = $1`, [email]);
+    if (rows.length === 0) {
+      // Don't reveal whether the account exists
+      return res.json({ success: true, message: 'If that account exists, a new code has been sent.' });
     }
-    return res.status(401).json({ success: false, message: error.message });
+    const user = rows[0];
+
+    const code = await otpService.createOtp(user.id, 'login');
+    try {
+      await sendOtpEmail(user, code);
+    } catch (emailError) {
+      console.error('[EMAIL ERROR] Failed to resend login OTP email:', emailError.message);
+    }
+
+    return res.json({ success: true, message: 'A new verification code has been sent to your email.' });
+  } catch (error) {
+    if (error.code === 'OTP_COOLDOWN') {
+      return res.status(429).json({ success: false, message: error.message, waitSeconds: error.waitSeconds });
+    }
+    console.error('Resend OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to send a new verification code right now. Please try again.' });
   }
 };
 
@@ -220,25 +338,21 @@ exports.forgotPassword = async (req, res) => {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
+    // password_resets' primary key is user_id, not token - conflict must target
+    // that column (a prior request for the same user is replaced, invalidating
+    // its old token) rather than a column with no unique constraint.
     await pool.query(
       `INSERT INTO password_resets (user_id, token, expires_at)
        VALUES ($1, $2, $3)
-       ON CONFLICT (token) DO UPDATE SET
-         user_id = EXCLUDED.user_id,
+       ON CONFLICT (user_id) DO UPDATE SET
          token = EXCLUDED.token,
          expires_at = EXCLUDED.expires_at`,
       [user.id, resetToken, expiresAt]
     );
 
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
-    await transporter.sendMail({
-      to: user.email,
-      subject: 'Reset your Summit Shares password',
-      html: `<p>You requested a password reset. Click the link below to set a new password:</p>
-             <a href="${resetUrl}">${resetUrl}</a>
-             <p>This link expires in 1 hour.</p>`,
-    });
+    await sendPasswordResetEmail(user, resetUrl);
 
     return res.json({ success: true, message: 'If that email exists, we sent a reset link.' });
   } catch (error) {

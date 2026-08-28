@@ -181,35 +181,35 @@ const AdminNotificationsPage = () => {
         <div className="card-header">
           <h3>Email Delivery Log</h3>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <div className="admin-table-wrap responsive">
+          <table className="admin-table">
             <thead>
-              <tr style={{ background: '#f3f4f6' }}>
-                <th style={{ padding: 8, textAlign: 'left' }}>Event</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Recipient</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Status</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Retry</th>
-                <th style={{ padding: 8, textAlign: 'left' }}>Error</th>
+              <tr>
+                <th>Event</th>
+                <th>Recipient</th>
+                <th>Status</th>
+                <th>Retry</th>
+                <th>Error</th>
               </tr>
             </thead>
             <tbody>
               {emailLog.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: 12, color: '#6b6b6b' }}>No email activity yet.</td></tr>
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 20, color: '#6b6b6b' }}>No email activity yet.</td></tr>
               ) : emailLog.map(item => (
-                <tr key={item.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: 8 }}>{item.event_type}</td>
-                  <td style={{ padding: 8 }}>{item.recipient_email}</td>
-                  <td style={{ padding: 8 }}>{item.status}</td>
-                  <td style={{ padding: 8 }}>
+                <tr key={item.id}>
+                  <td data-label="Event">{item.event_type}</td>
+                  <td data-label="Recipient">{item.recipient_email}</td>
+                  <td data-label="Status">{item.status}</td>
+                  <td data-label="Retry">
                     {item.status === 'failed' ? (
-                      <button type="button" onClick={() => handleRetryEmail(item.id)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #1d4ed8', background: '#dbeafe', color: '#1e3a8a', cursor: 'pointer' }}>
+                      <button type="button" className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => handleRetryEmail(item.id)}>
                         Retry
                       </button>
                     ) : (
                       item.retry_count || 0
                     )}
                   </td>
-                  <td style={{ padding: 8 }}>{item.error_message || '—'}</td>
+                  <td data-label="Error">{item.error_message || '—'}</td>
                 </tr>
               ))}
             </tbody>

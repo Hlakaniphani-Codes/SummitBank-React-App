@@ -14,6 +14,9 @@ import {
   getTransactions,
   getNotifications,
   markNotificationRead,
+  deleteNotification,
+  clearAllNotifications,
+  viewCard,
   blockCard,
   activateCard,
   requestNewCard,
@@ -34,6 +37,8 @@ import {
   createWire,
   getChequeDeposits,
   depositCheque,
+  getSessions,
+  signOutSession,
 } from '../../api';
 
 // ---- Create Context ----
@@ -96,6 +101,9 @@ const ClientLayout = () => {
   const [wires, setWires] = useState([]);
   const [wireFormOpen, setWireFormOpen] = useState(false);
   const [loadingWires, setLoadingWires] = useState(false);
+
+  const [sessions, setSessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
 
   const [chequeDeposits, setChequeDeposits] = useState([]);
   const [chequeFormOpen, setChequeFormOpen] = useState(false);
@@ -164,10 +172,11 @@ const ClientLayout = () => {
     navigate('/');
   };
 
-  // ---- TOGGLE 2FA (dummy) ----
-  const toggle2FA = (e) => {
-    e.currentTarget.classList.toggle('active');
-    showToast('Two-factor authentication setting updated');
+  // ---- TWO-FACTOR AUTH ----
+  // Not implemented on the backend yet (no TOTP/SMS verification flow exists) -
+  // don't let the UI claim a setting was saved when nothing persists anywhere.
+  const toggle2FA = () => {
+    showToast('Two-factor authentication is not available yet');
   };
 
   // ---- REFRESH DASHBOARD ----
@@ -193,6 +202,17 @@ const ClientLayout = () => {
   }, []);
 
   // ---- CARD ACTIONS ----
+  const [cardDetailModal, setCardDetailModal] = useState({ open: false, card: null });
+
+  const handleViewCard = async (cardId) => {
+    try {
+      const result = await viewCard(cardId);
+      setCardDetailModal({ open: true, card: result.card });
+    } catch (err) {
+      showToast(err.message || 'Unable to load card details');
+    }
+  };
+
   const updateCardStatus = async (cardId, action) => {
     try {
       const result = action === 'block' ? await blockCard(cardId) : await activateCard(cardId);
@@ -380,6 +400,82 @@ const ClientLayout = () => {
     }
   };
 
+  // Opens a real printable/downloadable document for a statement or tax document,
+  // built from the customer's actual transactions for that period - not a fake toast.
+  const handleDownloadDocument = async (doc) => {
+    // Open the window synchronously, inside the click's user-activation window -
+    // opening it after the await below loses that window in Safari/Chrome and
+    // window.open silently returns null even though the click was legitimate.
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      showToast('Please allow pop-ups to download this document');
+      return;
+    }
+
+    let periodTx = [];
+    try {
+      const data = await getTransactions({ startDate: doc.period_start, endDate: doc.period_end });
+      periodTx = Array.isArray(data) ? data : [];
+    } catch (err) {
+      // fall through with an empty transaction list rather than blocking the download
+    }
+
+    const escapeHtml = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    const rows = periodTx.map(tx => `
+      <tr>
+        <td>${tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString() : ''}</td>
+        <td>${escapeHtml(tx.description)}</td>
+        <td style="text-transform:capitalize">${escapeHtml(tx.type)}</td>
+        <td style="text-align:right; color:${Number(tx.amount) < 0 ? '#D94352' : '#2D9B4E'}">${Number(tx.amount) < 0 ? '-' : '+'}${formatCurrency(Math.abs(Number(tx.amount)))}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${escapeHtml(doc.title)}</title>
+          <style>
+            body { font-family: 'Inter', system-ui, sans-serif; background: #fff; padding: 40px; color: #1A1A1A; }
+            .doc { max-width: 700px; margin: 0 auto; }
+            .doc-header { text-align: center; border-bottom: 2px solid #C9A84C; padding-bottom: 20px; margin-bottom: 20px; }
+            .doc-header h2 { font-size: 20px; font-weight: 800; margin: 0; }
+            .doc-header p { font-size: 11px; color: #8a8a8a; margin: 4px 0 0; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th { text-align: left; padding: 8px; border-bottom: 2px solid #e8e2d9; color: #8a8a8a; text-transform: uppercase; font-size: 10px; }
+            td { padding: 8px; border-bottom: 1px solid #f4f2ef; }
+            .doc-footer { text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e8e2d9; font-size: 10px; color: #8a8a8a; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="doc">
+            <div class="doc-header">
+              <h2>SUMMIT SHARES</h2>
+              <p>${escapeHtml(doc.title)}</p>
+              <p>${escapeHtml(doc.period_start)} — ${escapeHtml(doc.period_end)}</p>
+            </div>
+            ${periodTx.length > 0 ? `
+              <table>
+                <thead><tr><th>Date</th><th>Description</th><th>Type</th><th style="text-align:right">Amount</th></tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+            ` : `<p style="text-align:center; color:#8a8a8a; font-size:12px;">No transactions recorded for this period.</p>`}
+            <div class="doc-footer">
+              <p>This document was generated by Summit Shares Banking.</p>
+              <p>For questions, contact support@summitshares.com</p>
+            </div>
+          </div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const loadNotifications = async () => {
     try {
       const data = await getNotifications();
@@ -420,6 +516,46 @@ const ClientLayout = () => {
     } finally {
       setLoadingCheques(false);
     }
+  };
+
+  const loadSessions = async () => {
+    setLoadingSessions(true);
+    try {
+      const data = await getSessions();
+      setSessions(data.sessions || []);
+    } catch (err) {
+      setSessions([]);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const handleSignOutSession = async (sessionId) => {
+    try {
+      await signOutSession(sessionId);
+      showToast('Session signed out');
+      loadSessions();
+    } catch (err) {
+      showToast(err.message || 'Failed to sign out session');
+    }
+  };
+
+  const handleSignOutAllSessions = async () => {
+    const others = sessions.filter(s => !s.is_current);
+    if (others.length === 0) {
+      showToast('No other active sessions');
+      return;
+    }
+    const results = await Promise.allSettled(others.map(s => signOutSession(s.id)));
+    const failed = results.filter(r => r.status === 'rejected').length;
+    if (failed === 0) {
+      showToast('All other devices signed out');
+    } else if (failed === others.length) {
+      showToast('Failed to sign out other devices');
+    } else {
+      showToast(`Signed out ${others.length - failed} of ${others.length} devices`);
+    }
+    loadSessions();
   };
 
   const handleCreateWire = async (e) => {
@@ -489,6 +625,27 @@ const ClientLayout = () => {
   };
 
   const getUnreadCount = () => notifications.filter(n => n.unread).length;
+
+  const deleteOneNotification = async (id) => {
+    try {
+      await deleteNotification(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      showToast('Notification deleted');
+    } catch (err) {
+      showToast(err.message || 'Could not delete notification');
+    }
+  };
+
+  const clearAllNotificationsHandler = async () => {
+    if (notifications.length === 0) return;
+    try {
+      await clearAllNotifications();
+      setNotifications([]);
+      showToast('Notifications cleared');
+    } catch (err) {
+      showToast(err.message || 'Could not clear notifications');
+    }
+  };
 
   // ---- EFFECTS ----
   useEffect(() => {
@@ -610,6 +767,7 @@ const ClientLayout = () => {
     if (path.includes('/statements')) loadDocuments();
     if (path.includes('/wires')) loadWires();
     if (path.includes('/cheques')) loadChequeDeposits();
+    if (path.includes('/security')) loadSessions();
   }, [location.pathname]);
 
   // ---- NAV ITEMS ----
@@ -652,6 +810,13 @@ const ClientLayout = () => {
             <div className="acct">{b.bank_name} • {b.account_identifier}</div>
           </div>
         </div>
+        <button
+          className="text-slate-400 hover:text-red-500 text-sm px-2"
+          title="Remove beneficiary"
+          onClick={() => handleDeleteBeneficiary(b.id)}
+        >
+          <i className="fas fa-trash"></i>
+        </button>
       </div>
     ));
   };
@@ -692,6 +857,8 @@ const ClientLayout = () => {
     markRead,
     markAllRead,
     getUnreadCount,
+    deleteOneNotification,
+    clearAllNotificationsHandler,
     beneficiaries,
     loadBeneficiaries,
     payees,
@@ -700,10 +867,15 @@ const ClientLayout = () => {
     loadBills,
     documents,
     loadDocuments,
+    handleDownloadDocument,
     wires,
     loadWires,
     chequeDeposits,
     loadChequeDeposits,
+    sessions,
+    loadingSessions,
+    handleSignOutSession,
+    handleSignOutAllSessions,
     setShowBeneficiaryModal,
     setShowPayeeModal,
     setShowBillModal,
@@ -712,6 +884,9 @@ const ClientLayout = () => {
     handlePayBill,
     handleRequestNewCard,
     updateCardStatus,
+    handleViewCard,
+    cardDetailModal,
+    setCardDetailModal,
     handleCreateWire,
     handleDepositCheque,
     handleDeleteBeneficiary,
@@ -958,6 +1133,17 @@ const ClientLayout = () => {
           .page-header p { font-size: 13px; color: #8a8a8a; margin-top: 2px; }
           .transfer-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
           @media (max-width: 992px) { .sidebar { transform: translateX(-100%); width: 280px; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; padding: 0 16px 30px; } .top-nav { padding: 14px 0 16px; } .mobile-menu-toggle { display: flex !important; } .cards-row { grid-template-columns: 1fr; } .widgets-row { grid-template-columns: 1fr; gap: 16px; } .quick-actions-grid { grid-template-columns: 1fr 1fr 1fr; } .insights-grid { grid-template-columns: repeat(2, 1fr); } .transfer-form-grid { grid-template-columns: 1fr; } }
+          @media (max-width: 640px) {
+            .quick-actions-grid { grid-template-columns: 1fr 1fr; }
+            .insights-grid { grid-template-columns: 1fr; }
+            .notification-dropdown { width: min(380px, calc(100vw - 32px)); }
+            .total-balance-card { flex-direction: column; align-items: flex-start; }
+            .total-balance-card .balance-right { width: 100%; flex-wrap: wrap; gap: 12px 20px; }
+            .total-balance-card .balance-right .stat { text-align: left; }
+            .top-nav-right { gap: 10px; }
+            .profile-wrap .profile-name { display: none; }
+            .profile-wrap .profile-dropdown-label span { display: none; }
+          }
         `}</style>
 
         {/* ---- TOAST ---- */}
@@ -979,18 +1165,19 @@ const ClientLayout = () => {
           </div>
         </div>
 
+        {/* ---- SIDEBAR OVERLAY (mobile tap-outside-to-close) ---- */}
+        <div className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+
         {/* ---- SIDEBAR ---- */}
         <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-logo">
-            <svg viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 170 40" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M10 30 L30 10 L50 30 L40 30 L30 18 L20 30 L10 30Z" fill="#C9A84C" />
-              <path d="M70 30 L90 10 L110 30 L100 30 L90 18 L80 30 L70 30Z" fill="#C9A84C" />
               <rect x="32" y="24" width="2" height="6" fill="#C9A84C" />
               <rect x="34" y="26" width="2" height="4" fill="#C9A84C" />
               <rect x="36" y="28" width="2" height="2" fill="#C9A84C" />
               <text x="46" y="26" fontFamily="Montserrat, sans-serif" fontWeight="800" fontSize="20" fill="#FFFFFF" letterSpacing="2">SUMMIT</text>
               <text x="46" y="36" fontFamily="Inter, sans-serif" fontWeight="500" fontSize="8" fill="#6b6b6b" letterSpacing="3">SHARES</text>
-              <circle cx="120" cy="20" r="4" fill="#C9A84C" opacity="0.3" />
             </svg>
           </div>
           <nav className="sidebar-nav">

@@ -143,18 +143,39 @@ const AdminLayout = () => {
         .admin-empty-state i { font-size: 36px; margin-bottom: 12px; opacity: 0.3; }
         .admin-empty-state p { font-size: 12px; }
 
+        .admin-menu-toggle { display: none; }
+        .admin-sidebar-overlay { display: none; }
+        .admin-sidebar-overlay.active { display: block; }
+
         @media (max-width: 992px) {
           .admin-sidebar { transform: translateX(-100%); }
           .admin-sidebar.open { transform: translateX(0); }
           .admin-main { margin-left: 0; }
           .admin-content { padding: 16px; }
           .admin-header { padding: 12px 16px; }
+          .admin-menu-toggle { display: flex; align-items: center; }
           .admin-grid-2, .admin-grid-3 { grid-template-columns: 1fr; }
           .admin-stats-grid { grid-template-columns: 1fr 1fr; }
         }
         @media (max-width: 640px) {
           .admin-stats-grid { grid-template-columns: 1fr; }
           .admin-table { min-width: 500px; font-size: 11px; }
+
+          .admin-table-wrap.responsive .admin-table thead { display: none; }
+          .admin-table-wrap.responsive .admin-table, .admin-table-wrap.responsive .admin-table tbody, .admin-table-wrap.responsive .admin-table tr, .admin-table-wrap.responsive .admin-table td { display: block; width: 100%; }
+          .admin-table-wrap.responsive .admin-table { min-width: 0; }
+          .admin-table-wrap.responsive .admin-table tr { margin-bottom: 12px; border-radius: 10px; background: #151515; border: 1px solid #1e1e1e; padding: 4px 0; }
+          .admin-table-wrap.responsive .admin-table tr:last-child { margin-bottom: 0; }
+          .admin-table-wrap.responsive .admin-table td { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #1a1a1a; white-space: normal; text-align: right; }
+          .admin-table-wrap.responsive .admin-table td:last-child { border-bottom: none; }
+          .admin-table-wrap.responsive .admin-table td::before { content: attr(data-label); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b6b6b; text-align: left; flex-shrink: 0; }
+
+          .admin-header .page-title { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .admin-header .header-right { gap: 8px; }
+          .admin-badge .info { display: none; }
+          .admin-badge { padding: 4px; }
+          .logout-btn span { display: none; }
+          .logout-btn { padding: 6px 10px; }
         }
       `}</style>
 
@@ -175,7 +196,7 @@ const AdminLayout = () => {
             <button
               className="admin-menu-toggle"
               onClick={() => setSidebarOpen(true)}
-              style={{ background: 'none', border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer', display: 'none' }}
+              style={{ background: 'none', border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer' }}
             >
               <i className="fas fa-bars"></i>
             </button>
@@ -194,7 +215,7 @@ const AdminLayout = () => {
               </div>
             </div>
             <button className="logout-btn" onClick={handleLogout}>
-              <i className="fas fa-right-from-bracket"></i> Logout
+              <i className="fas fa-right-from-bracket"></i> <span>Logout</span>
             </button>
           </div>
         </header>

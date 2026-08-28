@@ -28,7 +28,12 @@ const headers = () => ({
 
 const handleResponse = async (res) => {
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Request failed');
+  if (!res.ok) {
+    const err = new Error(data.message || 'Request failed');
+    if (data.code) err.code = data.code;
+    if (data.waitSeconds !== undefined) err.waitSeconds = data.waitSeconds;
+    throw err;
+  }
   return data;
 };
 
@@ -49,6 +54,20 @@ export const login = (email, password) =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
+  }).then(handleResponse);
+
+export const verifyLoginOtp = (email, code) =>
+  fetch(`${API_BASE}/auth/login/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  }).then(handleResponse);
+
+export const resendLoginOtp = (email) =>
+  fetch(`${API_BASE}/auth/login/resend-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
   }).then(handleResponse);
 
 // ---- DASHBOARD ----
@@ -73,10 +92,16 @@ export const transferFunds = (payload) =>
   }).then(handleResponse);
 
 // ---- CARDS ----
+export const viewCard = (cardId) =>
+  fetch(`${API_BASE}/cards/${cardId}/view`, {
+    method: 'POST',
+    headers: headers()
+  }).then(handleResponse);
+
 export const blockCard = (cardId) =>
-  fetch(`${API_BASE}/cards/${cardId}/block`, { 
-    method: 'POST', 
-    headers: headers() 
+  fetch(`${API_BASE}/cards/${cardId}/block`, {
+    method: 'POST',
+    headers: headers()
   }).then(handleResponse);
 
 export const activateCard = (cardId) =>
@@ -153,9 +178,21 @@ export const getNotifications = () =>
   fetch(`${API_BASE}/notifications`, { headers: headers() }).then(handleResponse);
 
 export const markNotificationRead = (id) =>
-  fetch(`${API_BASE}/notifications/${id}/read`, { 
-    method: 'PUT', 
-    headers: headers() 
+  fetch(`${API_BASE}/notifications/${id}/read`, {
+    method: 'PUT',
+    headers: headers()
+  }).then(handleResponse);
+
+export const deleteNotification = (id) =>
+  fetch(`${API_BASE}/notifications/${id}`, {
+    method: 'DELETE',
+    headers: headers()
+  }).then(handleResponse);
+
+export const clearAllNotifications = () =>
+  fetch(`${API_BASE}/notifications`, {
+    method: 'DELETE',
+    headers: headers()
   }).then(handleResponse);
 
 // ---- USER PROFILE & PASSWORD ----
@@ -174,6 +211,16 @@ export const changePassword = (payload) =>
     method: 'POST', 
     headers: headers(), 
     body: JSON.stringify(payload) 
+  }).then(handleResponse);
+
+// ---- SESSIONS ----
+export const getSessions = () =>
+  fetch(`${API_BASE}/sessions`, { headers: headers() }).then(handleResponse);
+
+export const signOutSession = (sessionId) =>
+  fetch(`${API_BASE}/sessions/${sessionId}/signout`, {
+    method: 'POST',
+    headers: headers(),
   }).then(handleResponse);
 
 // ---- SUPPORT ----

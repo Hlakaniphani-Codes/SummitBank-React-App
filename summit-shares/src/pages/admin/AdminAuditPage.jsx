@@ -53,7 +53,7 @@ const AdminAuditPage = () => {
   ];
 
   const renderTable = (data, columns) => (
-    <div className="admin-table-wrap">
+    <div className="admin-table-wrap responsive">
       <table className="admin-table">
         <thead><tr>{columns.map((col, i) => <th key={i}>{col.label}</th>)}</tr></thead>
         <tbody>
@@ -63,7 +63,7 @@ const AdminAuditPage = () => {
             data.map((row, idx) => (
               <tr key={row.id || idx}>
                 {columns.map((col, i) => (
-                  <td key={i} style={col.style || {}}>
+                  <td key={i} data-label={col.label} style={col.style || {}}>
                     {col.render ? col.render(row) : row[col.key] || '—'}
                   </td>
                 ))}

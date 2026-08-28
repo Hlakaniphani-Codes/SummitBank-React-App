@@ -1,5 +1,6 @@
 import React from 'react';
 import { useClient } from './ClientLayout';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 const ClientCheques = () => {
   const {
@@ -13,36 +14,8 @@ const ClientCheques = () => {
     handleDepositCheque,
   } = useClient();
 
-  // Generate demo cheque deposits if none exist
-  const displayDeposits = chequeDeposits.length > 0 ? chequeDeposits : [
-    {
-      id: 'demo-1',
-      amount: 2500.00,
-      status: 'completed',
-      created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-      description: 'Payroll Cheque Deposit',
-      account_number: '••••4521',
-      account_type: 'checking',
-    },
-    {
-      id: 'demo-2',
-      amount: 150.75,
-      status: 'pending',
-      created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-      description: 'Personal Cheque Deposit',
-      account_number: '••••4521',
-      account_type: 'checking',
-    },
-    {
-      id: 'demo-3',
-      amount: 5000.00,
-      status: 'completed',
-      created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
-      description: 'Business Cheque Deposit',
-      account_number: '••••7890',
-      account_type: 'savings',
-    },
-  ];
+  const [depositing, onDepositSubmit] = useSubmitGuard(handleDepositCheque);
+  const displayDeposits = chequeDeposits;
 
   return (
     <div className="page-section active">
@@ -60,6 +33,8 @@ const ClientCheques = () => {
           </div>
           {loadingCheques ? (
             <div className="text-slate-400 text-sm py-6">Loading deposits...</div>
+          ) : displayDeposits.length === 0 ? (
+            <div className="text-slate-400 text-sm py-6">No cheque deposits yet.</div>
           ) : (
             displayDeposits.map(d => (
               <div key={d.id} className="transfer-item">
@@ -88,7 +63,7 @@ const ClientCheques = () => {
             {chequeFormOpen ? 'Deposit a Cheque' : 'Cheque Deposit'}
           </h4>
           {chequeFormOpen ? (
-            <form onSubmit={handleDepositCheque} encType="multipart/form-data">
+            <form onSubmit={onDepositSubmit} encType="multipart/form-data">
               <div className="space-y-4">
                 <div className="form-group">
                   <label>Deposit To Account</label>
@@ -117,8 +92,8 @@ const ClientCheques = () => {
                 <p className="text-xs text-slate-400 mb-4">
                   By depositing this cheque, you agree to our terms and confirm that the cheque is payable to you.
                 </p>
-                <button type="submit" className="btn-gold w-full justify-center">
-                  <i className="fas fa-circle-dollar-to-slot"></i> Submit Deposit
+                <button type="submit" disabled={depositing} className="btn-gold w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed">
+                  <i className="fas fa-circle-dollar-to-slot"></i> {depositing ? 'Submitting…' : 'Submit Deposit'}
                 </button>
               </div>
             </form>

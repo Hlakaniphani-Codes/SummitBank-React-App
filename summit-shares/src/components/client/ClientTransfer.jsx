@@ -1,5 +1,6 @@
 import React from 'react';
 import { useClient } from './ClientLayout';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 const ClientTransfer = () => {
   const {
@@ -11,16 +12,18 @@ const ClientTransfer = () => {
     transactions,
   } = useClient();
 
+  const [transferring, onTransferSubmit] = useSubmitGuard(handleTransfer);
+
   return (
     <div className="page-section active">
       <div className="page-header">
         <h2>Fund Transfer</h2>
-        <p>Transfer money between accounts or to external recipients</p>
+        <p>Move money between your own accounts. For sending to another bank, use Wire Transfers.</p>
       </div>
       <div className="transfer-form-grid">
         <div className="card-box">
           <h4 className="font-bold text-brand-dark mb-4 text-sm">New Transfer</h4>
-          <form onSubmit={handleTransfer}>
+          <form onSubmit={onTransferSubmit}>
             <div className="space-y-4">
               <div className="form-group">
                 <label>From Account</label>
@@ -52,7 +55,9 @@ const ClientTransfer = () => {
                 <label>Date</label>
                 <input type="date" name="date" required />
               </div>
-              <button type="submit" className="btn-gold w-full justify-center"><i className="fas fa-paper-plane"></i> Send Transfer</button>
+              <button type="submit" disabled={transferring} className="btn-gold w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed">
+                <i className="fas fa-paper-plane"></i> {transferring ? 'Sending…' : 'Send Transfer'}
+              </button>
             </div>
           </form>
         </div>

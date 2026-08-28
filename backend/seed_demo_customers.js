@@ -154,23 +154,24 @@ async function seedDemoCustomers() {
       console.log(`Creating profile: ${demo.firstName} ${demo.lastName} (${demo.email})`);
 
       const passwordHash = await bcrypt.hash(demo.password, 10);
+      const pinHash = await bcrypt.hash('1234', 10);
 
       // 1. CREATE USER
       const userRes = await client.query(
         `INSERT INTO users (
-          first_name, last_name, email, password_hash, role,
+          first_name, last_name, email, password_hash, pin_hash, role,
           phone, street, city, state, zip, country, date_of_birth,
           occupation, employer, income_range,
           terms_accepted, is_active, status, login_enabled,
           email_verified, credit_score,
           approved_at, created_at
-        ) VALUES ($1,$2,$3,$4,'customer',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
+        ) VALUES ($1,$2,$3,$4,$5,'customer',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
           true, true, 'approved', true,
-          true, $15,
+          true, $16,
           NOW(), NOW())
         RETURNING id`,
         [
-          demo.firstName, demo.lastName, demo.email, passwordHash,
+          demo.firstName, demo.lastName, demo.email, passwordHash, pinHash,
           demo.phone, demo.street, demo.city, demo.state, demo.zip,
           demo.country, demo.dateOfBirth,
           demo.occupation, demo.employer, demo.incomeRange,
@@ -182,7 +183,7 @@ async function seedDemoCustomers() {
       // 2. CREATE APPLICATION (approved)
       await client.query(
         `INSERT INTO applications (user_id, application_type, status, reviewed_by, reviewed_at, created_at)
-         VALUES ($1, 'individual', 'approved', 1, NOW(), NOW())`,
+         VALUES ($1, 'account', 'approved', 1, NOW(), NOW())`,
         [userId]
       );
 

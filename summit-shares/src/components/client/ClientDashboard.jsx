@@ -9,7 +9,6 @@ const ClientDashboard = () => {
     dashboardError,
     balancesVisible,
     toggleBalance,
-    showToast,
     formatCurrency,
     copyText,
     navigateTo,
@@ -40,11 +39,11 @@ const ClientDashboard = () => {
         <div className="balance-right">
           <div className="stat">
             <div className="stat-label">Income (MTD)</div>
-            <div className="stat-value positive">+$0.00</div>
+            <div className="stat-value positive">+{formatCurrency(dashboardData.monthlyIncome || 0)}</div>
           </div>
           <div className="stat">
             <div className="stat-label">Expenses (MTD)</div>
-            <div className="stat-value negative">-$0.00</div>
+            <div className="stat-value negative">-{formatCurrency(dashboardData.monthlyExpenses || 0)}</div>
           </div>
           <div className="stat">
             <div className="stat-label">Notifications</div>
@@ -68,7 +67,22 @@ const ClientDashboard = () => {
               })()}
             </div>
             <div style={{ fontSize: 11, color: '#8a8a8a', marginTop: 2 }}>
-              Here's what's happening in your account right now.
+              {dashboardData.lastLogin ? (
+                <>
+                  <i className="fas fa-shield-halved" style={{ color: '#2D9B4E', marginRight: 4 }}></i>
+                  Last login {new Date(dashboardData.lastLogin.at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                  {dashboardData.lastLogin.ipAddress ? ` from ${dashboardData.lastLogin.ipAddress}` : ''}
+                  {' · '}
+                  <span
+                    style={{ color: '#C9A84C', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => navigateTo('security')}
+                  >
+                    Not you?
+                  </span>
+                </>
+              ) : (
+                "Here's what's happening in your account right now."
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -92,9 +106,9 @@ const ClientDashboard = () => {
                 </div>
               </div>
             )}
-            <button className="btn-outline" style={{ fontSize: 11, padding: '7px 12px' }} onClick={() => showToast('Welcome & trust settings updated')}>
-              <i className="fas fa-handshake-angle" style={{ color: '#C9A84C', marginRight: 6 }}></i>
-              Trust & Insights
+            <button className="btn-outline" style={{ fontSize: 11, padding: '7px 12px' }} onClick={() => navigateTo('security')}>
+              <i className="fas fa-shield-halved" style={{ color: '#C9A84C', marginRight: 6 }}></i>
+              Security Center
             </button>
           </div>
         </div>
@@ -167,7 +181,7 @@ const ClientDashboard = () => {
         <div className="widgets-row">
           <div className="widget-box">
             <div className="widget-header">
-              <h4><i className="fas fa-arrow-right-arrow-left text-brand-gold mr-2"></i> Recent Transfers</h4>
+              <h4><i className="fas fa-arrow-right-arrow-left text-brand-gold mr-2"></i> Recent Activity</h4>
               <a onClick={() => navigateTo('transactions')}>View All</a>
             </div>
             {dashboardData.recentTransactions && dashboardData.recentTransactions.length > 0 ? (
@@ -191,7 +205,6 @@ const ClientDashboard = () => {
           <div className="widget-box">
             <div className="widget-header">
               <h4><i className="fas fa-lightbulb text-brand-gold mr-2"></i> Smart Insights</h4>
-              <a onClick={() => showToast('Smart insights refreshed')}>Refresh</a>
             </div>
             <div className="insights-list">
               <div className="insight-item">
@@ -224,11 +237,11 @@ const ClientDashboard = () => {
             <div className="widget-header"><h4><i className="fas fa-bolt text-brand-gold mr-2"></i> Quick Actions</h4></div>
             <div className="quick-actions-grid">
               <a className="quick-action-btn" onClick={() => navigateTo('transfer')}><i className="fas fa-arrow-right-arrow-left"></i><span>Transfers</span></a>
-              <a className="quick-action-btn" onClick={() => showToast('Wire Transfer opened')}><i className="fas fa-building-columns"></i><span>Wire</span></a>
+              <a className="quick-action-btn" onClick={() => navigateTo('wires')}><i className="fas fa-building-columns"></i><span>Wire</span></a>
               <a className="quick-action-btn" onClick={() => navigateTo('bills')}><i className="fas fa-file-invoice-dollar"></i><span>Pay Bills</span></a>
-              <a className="quick-action-btn" onClick={() => showToast('Loan Request opened')}><i className="fas fa-hand-holding-dollar"></i><span>Loan</span></a>
-              <a className="quick-action-btn" onClick={() => showToast('Deposit opened')}><i className="fas fa-circle-dollar-to-slot"></i><span>Deposit</span></a>
-              <a className="quick-action-btn" onClick={() => showToast('Rewards opened')}><i className="fas fa-gift"></i><span>Rewards</span></a>
+              <a className="quick-action-btn" onClick={() => navigateTo('cheques')}><i className="fas fa-circle-dollar-to-slot"></i><span>Deposit</span></a>
+              <a className="quick-action-btn" onClick={() => navigateTo('cards')}><i className="fas fa-credit-card"></i><span>Cards</span></a>
+              <a className="quick-action-btn" onClick={() => navigateTo('beneficiaries')}><i className="fas fa-users"></i><span>Beneficiaries</span></a>
             </div>
           </div>
         </div>
@@ -236,7 +249,7 @@ const ClientDashboard = () => {
         <div className="insights-widget">
           <div className="insights-header">
             <h3><i className="fas fa-chart-pie text-brand-gold mr-2"></i> Financial Snapshot</h3>
-            <a onClick={() => showToast('Viewing detailed analytics')}>View Details</a>
+            <a onClick={() => navigateTo('transactions')}>View Details</a>
           </div>
           <div className="insights-grid">
             <div className="stat-card">
@@ -250,13 +263,13 @@ const ClientDashboard = () => {
             </div>
             <div className="stat-card">
               <div className="stat-label">Cards</div>
-              <div className="stat-value" style={{ color: '#D94352' }}>{dashboardData?.cards?.length || 0}</div>
-              <div className="stat-change negative"><i className="fas fa-arrow-down"></i> Linked card{(dashboardData?.cards?.length || 0) === 1 ? '' : 's'}</div>
+              <div className="stat-value" style={{ color: '#0B0B0B' }}>{dashboardData?.cards?.length || 0}</div>
+              <div className="stat-change" style={{ color: '#8a8a8a' }}><i className="fas fa-credit-card"></i> Linked card{(dashboardData?.cards?.length || 0) === 1 ? '' : 's'}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Notifications</div>
               <div className="stat-value" style={{ color: '#C9A84C' }}>{dashboardData?.unreadNotifications || 0}</div>
-              <div className="stat-change positive"><i className="fas fa-arrow-up"></i> Pending alerts</div>
+              <div className="stat-change" style={{ color: '#8a8a8a' }}><i className="fas fa-bell"></i> Pending alerts</div>
             </div>
           </div>
           <div className="bills-section">

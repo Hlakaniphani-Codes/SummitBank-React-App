@@ -3,12 +3,10 @@ const {
   createAccount,
   updateAccount,
   setAccountStatus,
-  deleteAccount,
   getAccountTransactions,
   creditAccount,
   debitAccount,
   setAccountBalance,
-  setAccountHold,
   getAccountDetails,
   adjustAvailableBalance,
   adjustLedgerBalance,
@@ -89,7 +87,7 @@ exports.creditAccount = async (req, res) => {
   }
 
   try {
-    const result = await creditAccount(id, amount, description || 'Admin credit', adminId);
+    const result = await creditAccount(id, amount, description || 'Bank Adjustment - Credit', adminId);
     await createAuditLog({
       adminId,
       action: 'credit',
@@ -117,7 +115,7 @@ exports.debitAccount = async (req, res) => {
   }
 
   try {
-    const result = await debitAccount(id, amount, description || 'Admin debit', adminId);
+    const result = await debitAccount(id, amount, description || 'Bank Adjustment - Debit', adminId);
     await createAuditLog({
       adminId,
       action: 'debit',
@@ -300,74 +298,6 @@ exports.unfreezeAccount = async (req, res) => {
   }
 };
 
-// POST /api/admin/accounts/:id/hold
-exports.holdAccount = async (req, res) => {
-  const { id } = req.params;
-  const adminId = req.userId;
-
-  try {
-    const result = await setAccountHold(id, true);
-    await createAuditLog({
-      adminId,
-      action: 'hold',
-      entityType: 'account',
-      entityId: Number(id),
-      description: `Placed account #${id} (${result.account_number}) on hold`,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-    return res.json({ success: true, message: 'Account placed on hold', account: result });
-  } catch (error) {
-    console.error('Hold account error:', error);
-    return res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-// POST /api/admin/accounts/:id/remove-hold
-exports.removeHold = async (req, res) => {
-  const { id } = req.params;
-  const adminId = req.userId;
-
-  try {
-    const result = await setAccountHold(id, false);
-    await createAuditLog({
-      adminId,
-      action: 'unhold',
-      entityType: 'account',
-      entityId: Number(id),
-      description: `Removed hold from account #${id} (${result.account_number})`,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-    return res.json({ success: true, message: 'Hold removed from account', account: result });
-  } catch (error) {
-    console.error('Remove hold error:', error);
-    return res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-// DELETE /api/admin/accounts/:id
-exports.deleteAccount = async (req, res) => {
-  const { id } = req.params;
-  const adminId = req.userId;
-
-  try {
-    const result = await deleteAccount(id);
-    await createAuditLog({
-      adminId,
-      action: 'delete',
-      entityType: 'account',
-      entityId: Number(id),
-      description: `Deleted account #${id}`,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-    return res.json({ success: true, message: 'Account deleted', ...result });
-  } catch (error) {
-    console.error('Delete account error:', error);
-    return res.status(400).json({ success: false, message: error.message });
-  }
-};
 
 // GET /api/admin/accounts/:id/transactions
 exports.getAccountTransactions = async (req, res) => {

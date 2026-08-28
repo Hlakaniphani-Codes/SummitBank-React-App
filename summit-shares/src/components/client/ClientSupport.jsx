@@ -5,9 +5,11 @@ const ClientSupport = () => {
   const { showToast } = useClient();
 
   const [openFaq, setOpenFaq] = useState(null);
+  const [submittingTicket, setSubmittingTicket] = useState(false);
 
   const handleSubmitTicket = async (e) => {
     e.preventDefault();
+    if (submittingTicket) return;
     const form = e.target;
     const data = new FormData(form);
     const payload = {
@@ -17,6 +19,7 @@ const ClientSupport = () => {
       message: data.get('message'),
     };
 
+    setSubmittingTicket(true);
     try {
       const { submitSupportTicket } = await import('../../api');
       await submitSupportTicket(payload);
@@ -24,6 +27,8 @@ const ClientSupport = () => {
       form.reset();
     } catch (err) {
       showToast(err.message || 'Failed to submit ticket');
+    } finally {
+      setSubmittingTicket(false);
     }
   };
 
@@ -152,9 +157,10 @@ const ClientSupport = () => {
             </div>
             <button
               type="submit"
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition shadow-sm"
+              disabled={submittingTicket}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <i className="fas fa-paper-plane text-xs"></i> Submit Ticket
+              <i className="fas fa-paper-plane text-xs"></i> {submittingTicket ? 'Submitting…' : 'Submit Ticket'}
             </button>
           </form>
         </div>

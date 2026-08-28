@@ -7,7 +7,8 @@ const ClientNotifications = () => {
     getUnreadCount,
     markRead,
     markAllRead,
-    showToast,
+    deleteOneNotification,
+    clearAllNotificationsHandler,
   } = useClient();
 
   const unreadCount = getUnreadCount();
@@ -35,7 +36,7 @@ const ClientNotifications = () => {
               <i className="fas fa-check-double text-[10px]"></i> Mark all read
             </button>
             <button
-              onClick={() => showToast('Notifications cleared')}
+              onClick={clearAllNotificationsHandler}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition"
             >
               <i className="fas fa-trash text-[10px]"></i> Clear all
@@ -99,7 +100,7 @@ const ClientNotifications = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => showToast('Notification deleted')}
+                    onClick={() => deleteOneNotification(n.id)}
                     title="Delete"
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
                   >

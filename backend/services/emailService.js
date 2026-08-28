@@ -1,7 +1,31 @@
 const nodemailer = require('nodemailer');
+const path = require('path');
 const pool = require('../config/db');
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@mysummshares.com';
+const LOGO_PATH = path.join(__dirname, '../assets/logo.jpeg');
+const LOGO_CID = 'summitshareslogo';
+
+// Shared branded header used at the top of every outgoing email - same dark
+// mark (#0B0B0B) and gold/white logo used across the site's own nav/sidebar.
+const renderEmailHeader = (title) => `
+  <div style="background: #0B0B0B; padding: 28px 24px; border-radius: 12px 12px 0 0; text-align: center;">
+    <img src="cid:${LOGO_CID}" alt="Summit Shares" style="height: 32px; width: auto; display: inline-block; margin-bottom: 14px;" />
+    <h2 style="margin: 0; font-size: 22px; color: #fff; font-weight: 700;">${title}</h2>
+  </div>
+`;
+
+// The committed .env ships documented placeholder values, not real credentials -
+// treat those the same as "unset" so a fresh checkout doesn't attempt (and fail)
+// a real SMTP handshake on every admin action.
+const PLACEHOLDER_SMTP_VALUES = new Set(['your-email@gmail.com', 'your-app-specific-password']);
+const isSmtpConfigured = () => {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) return false;
+  if (PLACEHOLDER_SMTP_VALUES.has(user) || PLACEHOLDER_SMTP_VALUES.has(pass)) return false;
+  return true;
+};
 
 let transporter = null;
 
@@ -40,12 +64,12 @@ const markEmailNotificationStatus = async (notificationId, status, errorMessage 
   try {
     await pool.query(
       `UPDATE email_notifications
-       SET status = $1,
-           error_message = $2,
-           retry_count = retry_count + $3,
-           sent_at = CASE WHEN $1 = 'sent' THEN CURRENT_TIMESTAMP ELSE sent_at END,
+       SET status = $1::varchar,
+           error_message = $2::text,
+           retry_count = retry_count + $3::integer,
+           sent_at = CASE WHEN $1::varchar = 'sent' THEN CURRENT_TIMESTAMP ELSE sent_at END,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $4`,
+       WHERE id = $4::bigint`,
       [status, errorMessage, incrementRetry ? 1 : 0, notificationId]
     );
   } catch (error) {
@@ -112,6 +136,9 @@ const getTransporter = () => {
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT || '587'),
     secure: process.env.SMTP_SECURE === 'true',
+    // Afrihost's shared mail server advertises an IPv6 address that most
+    // networks can't route to; force IPv4 so the connection doesn't hang/fail.
+    family: 4,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -142,11 +169,11 @@ const sendEmail = async (to, subject, html, text = '', options = {}) => {
     textBody: text,
   });
 
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  if (!isSmtpConfigured()) {
     console.log(`[EMAIL PLACEHOLDER] To: ${to}, Subject: ${subject}`);
     console.log(`[EMAIL PLACEHOLDER] Body: ${text || html}`);
     await markEmailNotificationStatus(notificationId, 'failed', 'SMTP credentials not configured', false);
-    return { messageId: `placeholder-${Date.now()}` };
+    throw new Error('SMTP credentials not configured');
   }
 
   try {
@@ -157,6 +184,9 @@ const sendEmail = async (to, subject, html, text = '', options = {}) => {
       subject,
       text: text || '',
       html,
+      attachments: [
+        { filename: 'logo.jpeg', path: LOGO_PATH, cid: LOGO_CID },
+      ],
     });
     console.log(`[EMAIL SENT] To: ${to}, Subject: "${subject}", MessageID: ${info.messageId}`);
     await markEmailNotificationStatus(notificationId, 'sent', null, false);
@@ -168,21 +198,17 @@ const sendEmail = async (to, subject, html, text = '', options = {}) => {
   }
 };
 
+// Emails are plaintext over an inherently insecure channel (forwarding, shared
+// inboxes, provider breaches) - only ever include ordinary contact details a
+// customer already knows about themselves. Never re-broadcast KYC/financial
+// data (DOB, address, occupation, employer, income, source of funds) or
+// internal identifiers (customer ID) that have no reason to leave the app.
 const formatCustomerDetails = (customer = {}) => {
   const fullName = [customer.first_name, customer.middle_name, customer.last_name].filter(Boolean).join(' ');
-  const address = [customer.street, customer.apartment, customer.city, customer.state, customer.zip, customer.country].filter(Boolean).join(', ');
   const items = [
-    ['Customer ID', customer.id],
     ['Full Name', fullName || 'Not provided'],
     ['Email', customer.email || 'Not provided'],
     ['Phone', customer.phone || 'Not provided'],
-    ['Date of Birth', customer.date_of_birth || 'Not provided'],
-    ['Address', address || 'Not provided'],
-    ['Occupation', customer.occupation || 'Not provided'],
-    ['Employer', customer.employer || 'Not provided'],
-    ['Income Range', customer.income_range || 'Not provided'],
-    ['Source of Funds', customer.source_of_funds || 'Not provided'],
-    ['Country', customer.country || 'Not provided'],
   ].filter(([, value]) => value !== undefined && value !== null && value !== '' && value !== 'Not provided');
 
   return items;
@@ -218,9 +244,7 @@ const sendProfileApprovedEmail = async (customer = {}, options = {}) => {
   const text = `Dear ${firstName},\n\nCongratulations! Your Summit Shares profile has been approved.\n\nYour profile details are listed below:\n${detailRows.map(([label, value]) => `${label}: ${value}`).join('\n')}\n\nYou can now access your account and begin banking with us.\n\nSupport: ${SUPPORT_EMAIL}`;
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; color: #111827;">
-      <div style="background: #0f172a; color: #fff; padding: 24px; border-radius: 12px 12px 0 0;">
-        <h2 style="margin: 0; font-size: 28px;">Profile Approved</h2>
-      </div>
+      ${renderEmailHeader('Profile Approved')}
       <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
         <p>Dear ${firstName},</p>
         <p>Congratulations! We are pleased to confirm that your Summit Shares profile has been approved.</p>
@@ -242,6 +266,75 @@ const sendProfileApprovedEmail = async (customer = {}, options = {}) => {
   });
 };
 
+const sendOtpEmail = async (user = {}, code) => {
+  const recipient = user.email;
+  if (!recipient) {
+    console.log('[EMAIL SKIPPED] OTP email missing recipient:', user);
+    return { messageId: `placeholder-${Date.now()}` };
+  }
+
+  const firstName = user.first_name || 'there';
+  const subject = 'Your Summit Shares verification code';
+  const text = `Hi ${firstName},\n\nYour verification code is ${code}.\n\nThis code expires in ${process.env.OTP_EXPIRY_MINUTES || 5} minutes and can only be used once.\n\nIf you did not attempt to log in, please contact support immediately at ${SUPPORT_EMAIL}.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; color: #111827;">
+      ${renderEmailHeader('Verify Your Login')}
+      <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
+        <p>Hi ${firstName},</p>
+        <p>Use the code below to finish signing in to Summit Shares:</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <span style="display: inline-block; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #0f172a; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 24px;">${code}</span>
+        </div>
+        <p style="color: #6b7280; font-size: 13px;">This code expires in ${process.env.OTP_EXPIRY_MINUTES || 5} minutes and can only be used once.</p>
+        <p style="color: #6b7280; font-size: 13px;">If you did not attempt to log in, please contact our support team immediately at <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>.</p>
+        <br/>
+        <p>Best regards,</p>
+        <p><strong>Summit Shares Support</strong></p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail(recipient, subject, html, text, {
+    userId: user.id,
+    eventType: 'login_otp',
+    referenceId: user.id,
+  });
+};
+
+const sendPasswordResetEmail = async (user = {}, resetUrl) => {
+  const recipient = user.email;
+  if (!recipient) {
+    console.log('[EMAIL SKIPPED] Password reset email missing recipient:', user);
+    return { messageId: `placeholder-${Date.now()}` };
+  }
+
+  const firstName = user.first_name || 'there';
+  const subject = 'Reset your Summit Shares password';
+  const text = `Hi ${firstName},\n\nYou requested a password reset. Use the link below to set a new password:\n${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, you can safely ignore this email.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; color: #111827;">
+      ${renderEmailHeader('Password Reset Request')}
+      <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
+        <p>Hi ${firstName},</p>
+        <p>You requested a password reset. Click the button below to set a new password:</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${resetUrl}" style="display: inline-block; background: #C9A84C; color: #0f172a; font-weight: 700; text-decoration: none; padding: 12px 28px; border-radius: 8px;">Reset Password</a>
+        </div>
+        <p style="color: #6b7280; font-size: 13px;">This link expires in 1 hour. If you did not request this, you can safely ignore this email.</p>
+        <br/>
+        <p>Best regards,</p>
+        <p><strong>Summit Shares Support</strong></p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail(recipient, subject, html, text, {
+    userId: user.id,
+    eventType: 'password_reset',
+    referenceId: user.id,
+  });
+};
+
 const sendAdminActionEmail = async (customer = {}, actionTitle, actionDescription, extraDetails = {}, options = {}) => {
   const recipient = customer.email;
   if (!recipient) {
@@ -258,10 +351,8 @@ const sendAdminActionEmail = async (customer = {}, actionTitle, actionDescriptio
   const text = `Dear ${firstName},\n\n${actionDescription}\n\nDetails:\n${detailRows.map(([label, value]) => `${label}: ${value}`).join('\n')}\n\nSupport: ${SUPPORT_EMAIL}`;
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; color: #111827;">
-      <div style="background: #1d4ed8; color: #fff; padding: 24px; border-radius: 12px 12px 0 0;">
-        <h2 style="margin: 0; font-size: 28px;">${actionTitle}</h2>
-      </div>
-      <div style="padding: 24px; border: 1px solid #dbeafe; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
+      ${renderEmailHeader(actionTitle)}
+      <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
         <p>Dear ${firstName},</p>
         <p>${actionDescription}</p>
         ${renderDetailRows(detailRows)}
@@ -286,14 +377,16 @@ const sendAdminActionEmail = async (customer = {}, actionTitle, actionDescriptio
 const sendApprovalEmail = async (to, firstName, applicationType) => {
   const subject = `Your ${applicationType} application has been approved`;
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #2D9B4E;">Application Approved</h2>
-      <p>Dear ${firstName},</p>
-      <p>We are pleased to inform you that your <strong>${applicationType}</strong> application has been approved.</p>
-      <p>You can now access the relevant features in your account dashboard.</p>
-      <br/>
-      <p>Best regards,</p>
-      <p><strong>Summit Shares Team</strong></p>
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; color: #111827;">
+      ${renderEmailHeader('Application Approved')}
+      <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
+        <p>Dear ${firstName},</p>
+        <p>We are pleased to inform you that your <strong>${applicationType}</strong> application has been approved.</p>
+        <p>You can now access the relevant features in your account dashboard.</p>
+        <br/>
+        <p>Best regards,</p>
+        <p><strong>Summit Shares Team</strong></p>
+      </div>
     </div>
   `;
   return sendEmail(to, subject, html);
@@ -305,15 +398,17 @@ const sendApprovalEmail = async (to, firstName, applicationType) => {
 const sendRejectionEmail = async (to, firstName, applicationType, reason = '') => {
   const subject = `Update on your ${applicationType} application`;
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #D94352;">Application Update</h2>
-      <p>Dear ${firstName},</p>
-      <p>After careful review, we regret to inform you that your <strong>${applicationType}</strong> application has not been approved at this time.</p>
-      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
-      <p>If you have any questions, please contact our support team.</p>
-      <br/>
-      <p>Best regards,</p>
-      <p><strong>Summit Shares Team</strong></p>
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; color: #111827;">
+      ${renderEmailHeader('Application Update')}
+      <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
+        <p>Dear ${firstName},</p>
+        <p>After careful review, we regret to inform you that your <strong>${applicationType}</strong> application has not been approved at this time.</p>
+        ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+        <p>If you have any questions, please contact our support team.</p>
+        <br/>
+        <p>Best regards,</p>
+        <p><strong>Summit Shares Team</strong></p>
+      </div>
     </div>
   `;
   return sendEmail(to, subject, html);
@@ -324,12 +419,14 @@ const sendRejectionEmail = async (to, firstName, applicationType, reason = '') =
  */
 const sendCustomEmail = async (to, subject, message) => {
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #C9A84C;">Summit Shares</h2>
-      <p>${message.replace(/\n/g, '<br/>')}</p>
-      <br/>
-      <p>Best regards,</p>
-      <p><strong>Summit Shares Team</strong></p>
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; color: #111827;">
+      ${renderEmailHeader('Summit Shares')}
+      <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
+        <p>${message.replace(/\n/g, '<br/>')}</p>
+        <br/>
+        <p>Best regards,</p>
+        <p><strong>Summit Shares Team</strong></p>
+      </div>
     </div>
   `;
   return sendEmail(to, subject, html);
@@ -359,6 +456,8 @@ module.exports = {
   sendBroadcastEmail,
   sendProfileApprovedEmail,
   sendAdminActionEmail,
+  sendOtpEmail,
+  sendPasswordResetEmail,
   getEmailNotifications,
   retryFailedEmailNotification,
 };

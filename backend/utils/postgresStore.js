@@ -125,40 +125,59 @@ const authenticateUser = async (email, password) => {
 const getDashboardData = async (userId) => {
   await ensureSchema();
 
-  const balanceRows = await query(
-    'SELECT SUM(balance) AS total FROM accounts WHERE user_id = $1 AND status = $2',
-    [userId, 'active']
-  );
+  // Built from local Y/M directly (not via toISOString(), which converts through UTC
+  // and can shift the date back a day for any timezone ahead of UTC).
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-  const accounts = await query(
-    'SELECT id, account_number, account_type, balance, currency, routing_number, apy FROM accounts WHERE user_id = $1',
-    [userId]
-  );
-
-  const recentTx = await query(
-    `SELECT transaction_id, description, amount, type, status, transaction_date
-     FROM transactions
-     WHERE user_id = $1
-     ORDER BY transaction_date DESC
-     LIMIT 5`,
-    [userId]
-  );
-
-  const notificationRows = await query(
-    'SELECT COUNT(*) AS count FROM notifications WHERE user_id = $1 AND is_read = false',
-    [userId]
-  );
-
-  const cards = await query(
-    'SELECT id, last4, card_type, card_network, status FROM cards WHERE user_id = $1 AND status != $2',
-    [userId, 'expired']
-  );
-
-  // Fetch credit score for the user
-  const creditScoreResult = await query(
-    'SELECT credit_score FROM users WHERE id = $1',
-    [userId]
-  );
+  const [
+    balanceRows,
+    accounts,
+    recentTx,
+    notificationRows,
+    cards,
+    creditScoreResult,
+    mtdRows,
+    lastLoginRows,
+  ] = await Promise.all([
+    // A frozen/held account's balance is still the customer's money - only exclude
+    // closed accounts, don't silently zero out the total just because an account
+    // is restricted (which the account cards below already show correctly).
+    query("SELECT SUM(balance) AS total FROM accounts WHERE user_id = $1 AND status != 'closed'", [userId]),
+    query('SELECT id, account_number, account_type, balance, currency, routing_number, apy FROM accounts WHERE user_id = $1', [userId]),
+    query(
+      `SELECT transaction_id, description, amount, type, status, transaction_date
+       FROM transactions
+       WHERE user_id = $1
+       ORDER BY transaction_date DESC
+       LIMIT 5`,
+      [userId]
+    ),
+    query('SELECT COUNT(*) AS count FROM notifications WHERE user_id = $1 AND is_read = false', [userId]),
+    query('SELECT id, last4, card_type, card_network, status FROM cards WHERE user_id = $1 AND status != $2', [userId, 'expired']),
+    query('SELECT credit_score FROM users WHERE id = $1', [userId]),
+    // Month-to-date income/expenses, computed from actual transaction amounts
+    // (positive = money in, negative = money out) rather than shown as a fixed $0.00.
+    // Transfers between the customer's own accounts are excluded - both legs land
+    // under the same user_id and would otherwise double-count as income AND expense.
+    query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) AS income,
+         COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) AS expenses
+       FROM transactions
+       WHERE user_id = $1 AND transaction_date >= $2 AND type != 'transfer'`,
+      [userId, monthStart]
+    ),
+    // Previous successful login (skip the most recent row, which is this session),
+    // shown on the dashboard so the customer can spot unauthorized access.
+    query(
+      `SELECT created_at, ip_address FROM login_history
+       WHERE user_id = $1 AND status = 'success'
+       ORDER BY created_at DESC
+       OFFSET 1 LIMIT 1`,
+      [userId]
+    ),
+  ]);
 
   return {
     totalBalance: Number(balanceRows.rows[0]?.total || 0),
@@ -167,6 +186,12 @@ const getDashboardData = async (userId) => {
     unreadNotifications: Number(notificationRows.rows[0]?.count || 0),
     cards: cards.rows,
     creditScore: creditScoreResult.rows[0]?.credit_score || null,
+    monthlyIncome: Number(mtdRows.rows[0]?.income || 0),
+    monthlyExpenses: Number(mtdRows.rows[0]?.expenses || 0),
+    lastLogin: lastLoginRows.rows[0] ? {
+      at: lastLoginRows.rows[0].created_at,
+      ipAddress: lastLoginRows.rows[0].ip_address,
+    } : null,
   };
 };
 
@@ -359,18 +384,23 @@ const getCardDetails = async (userId, cardId) => {
 
 const setCardStatus = async (userId, cardId, nextStatus) => {
   await ensureSchema();
-  const allowed = ['active', 'blocked', 'pending', 'expired'];
+  // Customers may only block/unblock their own card. Moving a card out of 'pending'
+  // (approval) or into/out of 'expired' is an admin-only transition.
+  const allowed = ['active', 'blocked'];
   if (!allowed.includes(nextStatus)) throw new Error('Invalid card status');
 
+  // Single atomic UPDATE guarded by status, so a concurrent admin expire/approve
+  // can't be raced and silently overwritten between a check and a later write.
   const result = await query(
-    'UPDATE cards SET status = $1 WHERE id = $2 AND user_id = $3 AND status != $4',
-    [nextStatus, cardId, userId, 'expired']
+    `UPDATE cards SET status = $1 WHERE id = $2 AND user_id = $3 AND status NOT IN ('expired', 'pending')`,
+    [nextStatus, cardId, userId]
   );
 
   if (result.rowCount === 0) {
     const existing = await getCardDetails(userId, cardId);
     if (!existing) throw new Error('Card not found');
     if (existing.status === 'expired') throw new Error('Card is expired and cannot be changed');
+    if (existing.status === 'pending') throw new Error('This card is still awaiting admin approval');
     throw new Error('Failed to update card');
   }
 
@@ -702,6 +732,20 @@ const markNotificationRead = async (userId, notificationId) => {
   return true;
 };
 
+const deleteNotification = async (userId, notificationId) => {
+  const result = await query(
+    'DELETE FROM notifications WHERE id = $1 AND user_id = $2',
+    [notificationId, userId]
+  );
+  if (result.rowCount === 0) throw new Error('Notification not found');
+  return true;
+};
+
+const deleteAllNotifications = async (userId) => {
+  const result = await query('DELETE FROM notifications WHERE user_id = $1', [userId]);
+  return { count: result.rowCount };
+};
+
 const createNotification = async (userId, title, description) => {
   const result = await query(
     'INSERT INTO notifications (user_id, title, description) VALUES ($1, $2, $3) RETURNING id, created_at',
@@ -910,6 +954,8 @@ module.exports = {
   changePassword,
   listNotifications,
   markNotificationRead,
+  deleteNotification,
+  deleteAllNotifications,
   createNotification,
   createWireTransfer,
   listCustomerWireTransfers,

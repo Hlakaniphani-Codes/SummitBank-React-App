@@ -7,5 +7,7 @@ router.use(authenticate);
 
 router.get('/', notificationsController.getNotifications);
 router.put('/:id/read', notificationsController.markRead);
+router.delete('/:id', notificationsController.deleteOne);
+router.delete('/', notificationsController.deleteAll);
 
 module.exports = router;

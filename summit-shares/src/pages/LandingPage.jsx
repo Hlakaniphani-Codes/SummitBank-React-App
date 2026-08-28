@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { login } from '../api';
 
 // ----- useToast hook -----
@@ -38,6 +38,8 @@ const flagClass = (code) => {
 
 // ----- Main Component -----
 export default function LandingPage() {
+  const navigate = useNavigate();
+
   // --- Expandables ---
   const [expanded, setExpanded] = useState({
     businessExpand: false, cardsExpand: false, savingsExpand: false,
@@ -64,6 +66,7 @@ export default function LandingPage() {
     full_name: '', email: '', phone: '', product_interested_in: 'Business Account', message: '',
   });
   const [applying, setApplying] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const openApplyModal = (product) => {
     setApplyProduct(product || '');
@@ -120,6 +123,7 @@ export default function LandingPage() {
   // ---- UPDATED: use the imported `login` function with localStorage persistence ----
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    if (isLoggingIn) return; // prevent duplicate submits from piling up against the rate limiter
     const identifier = loginForm.identifier.trim();
     const password = loginForm.password;
     if (!identifier || !password) return;
@@ -130,11 +134,22 @@ export default function LandingPage() {
       localStorage.removeItem('savedUsername');
     }
 
+    setIsLoggingIn(true);
     try {
       const data = await login(identifier, password);
+
+      if (data.otpRequired) {
+        // Password was correct, but the account still needs to verify the
+        // emailed code before a session token is issued - hand off to the
+        // verification screen instead of assuming login is complete.
+        showToast(data.message || 'Enter the verification code sent to your email.');
+        navigate('/verify-otp', { state: { email: data.email, maskedEmail: data.maskedEmail } });
+        return;
+      }
+
       if (data.token) localStorage.setItem('token', data.token);
       if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
-      showToast('✅ Login successful');
+      showToast('Login successful. Redirecting…');
       // Redirect based on role: admin goes to admin dashboard, customers go to customer dashboard
       const role = data.user?.role || 'customer';
       if (role === 'admin' || role === 'super_admin') {
@@ -144,6 +159,11 @@ export default function LandingPage() {
       }
     } catch (err) {
       showToast(err.message || 'Login error. Check backend connection.');
+    } finally {
+      // Always clear the loading flag, not just on error - window.location.href
+      // normally unmounts this page, but if that redirect is ever short-circuited
+      // the Sign In button must not stay stuck disabled.
+      setIsLoggingIn(false);
     }
   };
 
@@ -154,7 +174,7 @@ export default function LandingPage() {
     e.preventDefault();
     const { full_name, email, phone, product_interested_in, message } = applyForm;
     if (!full_name || !email || !phone || !product_interested_in) {
-      showToast('❌ Please fill in all required fields.');
+      showToast('Please fill in all required fields.');
       return;
     }
     setApplying(true);
@@ -167,13 +187,13 @@ export default function LandingPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
-        showToast(data.message || '❌ Application failed to submit.');
+        showToast(data.message || 'Application failed to submit.');
         return;
       }
       closeApplyModal();
-      showToast("✅ Application submitted successfully! We'll contact you within 24 hours.");
+      showToast("Application submitted successfully. We'll contact you within 24 hours.");
     } catch (err) {
-      showToast('❌ Network/server error. Check backend connection.');
+      showToast('Network/server error. Check backend connection.');
     } finally {
       setApplying(false);
     }
@@ -239,34 +259,6 @@ export default function LandingPage() {
         .corporate-pattern{background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C9A84C' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
         .review-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #C9A84C}
         .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;align-items:center;justify-content:center;padding:20px}
-        .flag-icon-gb{background-image:url('https://flagcdn.com/w20/gb.png')}
-        .flag-icon-eu{background-image:url('https://flagcdn.com/w20/eu.png')}
-        .flag-icon-jp{background-image:url('https://flagcdn.com/w20/jp.png')}
-        .flag-icon-ca{background-image:url('https://flagcdn.com/w20/ca.png')}
-        .flag-icon-ch{background-image:url('https://flagcdn.com/w20/ch.png')}
-        .flag-icon-za{background-image:url('https://flagcdn.com/w20/za.png')}
-        .flag-icon-au{background-image:url('https://flagcdn.com/w20/au.png')}
-        .flag-icon-ng{background-image:url('https://flagcdn.com/w20/ng.png')}
-        .flag-icon-ke{background-image:url('https://flagcdn.com/w20/ke.png')}
-        .flag-icon-in{background-image:url('https://flagcdn.com/w20/in.png')}
-        .flag-icon-br{background-image:url('https://flagcdn.com/w20/br.png')}
-        .flag-icon-mx{background-image:url('https://flagcdn.com/w20/mx.png')}
-        .flag-icon-ae{background-image:url('https://flagcdn.com/w20/ae.png')}
-        .flag-icon-sg{background-image:url('https://flagcdn.com/w20/sg.png')}
-        .flag-icon-kr{background-image:url('https://flagcdn.com/w20/kr.png')}
-        .flag-icon-cn{background-image:url('https://flagcdn.com/w20/cn.png')}
-        .flag-icon-se{background-image:url('https://flagcdn.com/w20/se.png')}
-        .flag-icon-no{background-image:url('https://flagcdn.com/w20/no.png')}
-        .flag-icon-dk{background-image:url('https://flagcdn.com/w20/dk.png')}
-
-        .no-bullets{list-style:none;padding-left:0}
-        html{scroll-behavior:smooth}
-        .logo-svg{height:40px;width:auto}
-        .gold-gradient{background:linear-gradient(135deg,#C9A84C 0%,#D9C06E 50%,#A8893A 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-        .corporate-pattern{background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C9A84C' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
-        .review-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #C9A84C}
-
-        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;align-items:center;justify-content:center;padding:20px}
         .modal-overlay.active{display:flex}
         .modal-box{background:#fff;border-radius:16px;max-width:580px;width:100%;padding:32px;box-shadow:0 30px 80px rgba(0,0,0,0.3);animation:modalIn .3s ease;max-height:90vh;overflow-y:auto}
         @keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(30px)}to{opacity:1;transform:scale(1) translateY(0)}}
@@ -300,9 +292,8 @@ export default function LandingPage() {
         <div className="container mx-auto px-6 lg:px-12 py-4 flex items-center justify-between">
           {/* Logo – Link to home */}
           <Link to="/" className="flex items-center gap-3 shrink-0">
-            <svg className="logo-svg" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg className="logo-svg" viewBox="0 0 170 40" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M10 30 L30 10 L50 30 L40 30 L30 18 L20 30 L10 30Z" fill="#C9A84C" />
-              <path d="M70 30 L90 10 L110 30 L100 30 L90 18 L80 30 L70 30Z" fill="#C9A84C" />
               <rect x="32" y="24" width="2" height="6" fill="#C9A84C" />
               <rect x="34" y="26" width="2" height="4" fill="#C9A84C" />
               <rect x="36" y="28" width="2" height="2" fill="#C9A84C" />
@@ -312,7 +303,6 @@ export default function LandingPage() {
               <text x="46" y="36" fontFamily="Inter, sans-serif" fontWeight="500" fontSize="8" fill="#5A5A5A" letterSpacing="3">
                 SHARES
               </text>
-              <circle cx="120" cy="20" r="4" fill="#C9A84C" opacity="0.3" />
             </svg>
           </Link>
 
@@ -427,15 +417,6 @@ export default function LandingPage() {
               </div>
 
               <div className="flex flex-wrap gap-3 pt-2">
-                <button
-                  onClick={() => showToast('📺 Opening our welcome video...')}
-                  className="bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition inline-flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                  Watch Video
-                </button>
                 <span className="text-white/50 text-xs flex items-center gap-2">
                   <svg className="w-4 h-4 text-brand-gold" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
@@ -500,9 +481,10 @@ export default function LandingPage() {
                 <div className="flex items-center gap-4 pt-2">
                   <button
                     type="submit"
-                    className="flex-1 bg-brand-dark hover:bg-neutral-900 text-white font-bold py-3.5 px-6 rounded-sm text-center tracking-wider uppercase text-[11px] transition"
+                    disabled={isLoggingIn}
+                    className="flex-1 bg-brand-dark hover:bg-neutral-900 text-white font-bold py-3.5 px-6 rounded-sm text-center tracking-wider uppercase text-[11px] transition disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Sign In
+                    {isLoggingIn ? 'Signing In…' : 'Sign In'}
                   </button>
                   <Link
                     to="/enroll"
@@ -1440,7 +1422,7 @@ export default function LandingPage() {
             <a href="#" className="text-neutral-400 hover:text-brand-gold transition">Privacy</a>
             <a href="#" className="text-neutral-400 hover:text-brand-gold transition">Terms</a>
             <a href="#" className="text-neutral-400 hover:text-brand-gold transition">Cookies</a>
-            <a href="#" className="text-neutral-400 hover:text-brand-gold transition">Accessibility</a>
+      vscode-webview://14g01rmts5ogm20u3sl1vscapp397q4l6086is6v31a1ipklqarh/index.html?id=13fb1afc-5d9b-48ab-8770-91e330cc421c&parentId=1&origin=0698690e-7ca9-4843-a3f5-f76a22509987&swVersion=6&extensionId=Anthropic.claude-code&platform=electron&vscode-resource-base-authority=vscode-resource.vscode-cdn.net&parentOrigin=vscode-file%3A%2F%2Fvscode-app&session=603fa3f2-76f6-4e7a-a75f-6f3a0ed39522#      <a href="#" className="text-neutral-400 hover:text-brand-gold transition">Accessibility</a>
           </div>
         </div>
       </footer>

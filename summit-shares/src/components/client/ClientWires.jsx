@@ -1,5 +1,6 @@
 import React from 'react';
 import { useClient } from './ClientLayout';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 const ClientWires = () => {
   const {
@@ -12,6 +13,8 @@ const ClientWires = () => {
     setWireFormOpen,
     handleCreateWire,
   } = useClient();
+
+  const [submittingWire, onWireSubmit] = useSubmitGuard(handleCreateWire);
 
   return (
     <div className="page-section active">
@@ -50,7 +53,7 @@ const ClientWires = () => {
             {wireFormOpen ? 'New Wire Transfer' : 'Wire Transfer Form'}
           </h4>
           {wireFormOpen ? (
-            <form onSubmit={handleCreateWire}>
+            <form onSubmit={onWireSubmit}>
               <div className="space-y-4">
                 <div className="form-group">
                   <label>From Account</label>
@@ -106,8 +109,8 @@ const ClientWires = () => {
                   <label>Description</label>
                   <input type="text" name="description" placeholder="Invoice payment" />
                 </div>
-                <button type="submit" className="btn-gold w-full justify-center">
-                  <i className="fas fa-paper-plane"></i> Submit Wire Transfer
+                <button type="submit" disabled={submittingWire} className="btn-gold w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed">
+                  <i className="fas fa-paper-plane"></i> {submittingWire ? 'Submitting…' : 'Submit Wire Transfer'}
                 </button>
               </div>
             </form>

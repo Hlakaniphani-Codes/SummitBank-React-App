@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useClient } from './ClientLayout';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import GenerateReceiptModal from '../GenerateReceiptModal';
 
 const ClientBills = () => {
@@ -15,50 +16,10 @@ const ClientBills = () => {
   } = useClient();
 
   const [receiptBill, setReceiptBill] = useState(null);
+  const [payingBill, onPayBillSubmit] = useSubmitGuard(handlePayBill);
+  const [addingBill, onAddBillSubmit] = useSubmitGuard(handleAddBill);
 
-  // Generate demo bills if none exist
-  const displayBills = bills.length > 0 ? bills : [
-    {
-      id: 'demo-bill-1',
-      name: 'Electricity Bill',
-      description: 'Monthly electricity payment',
-      amount: 145.50,
-      due_date: new Date(Date.now() + 86400000 * 5).toISOString().slice(0, 10),
-      frequency: 'monthly',
-      status: 'due',
-      payee_name: 'City Power Corp',
-    },
-    {
-      id: 'demo-bill-2',
-      name: 'Internet Service',
-      description: 'Fiber internet plan',
-      amount: 89.99,
-      due_date: new Date(Date.now() + 86400000 * 12).toISOString().slice(0, 10),
-      frequency: 'monthly',
-      status: 'upcoming',
-      payee_name: 'SpeedNet ISP',
-    },
-    {
-      id: 'demo-bill-3',
-      name: 'Water Utility',
-      description: 'Monthly water bill',
-      amount: 62.30,
-      due_date: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
-      frequency: 'monthly',
-      status: 'paid',
-      payee_name: 'Metro Water Services',
-    },
-    {
-      id: 'demo-bill-4',
-      name: 'Rent Payment',
-      description: 'Monthly apartment rent',
-      amount: 1500.00,
-      due_date: new Date(Date.now() + 86400000 * 20).toISOString().slice(0, 10),
-      frequency: 'monthly',
-      status: 'upcoming',
-      payee_name: 'Haven Properties LLC',
-    },
-  ];
+  const displayBills = bills;
 
   return (
     <div className="page-section active">
@@ -108,7 +69,7 @@ const ClientBills = () => {
         </div>
         <div className="card-box">
           <h4 className="font-bold text-brand-dark mb-4 text-sm">Pay a Bill</h4>
-          <form onSubmit={handlePayBill}>
+          <form onSubmit={onPayBillSubmit}>
             <div className="space-y-4">
               <div className="form-group">
                 <label>Select Bill</label>
@@ -153,12 +114,14 @@ const ClientBills = () => {
                   )}
                 </select>
               </div>
-              <button type="submit" className="btn-gold w-full justify-center"><i className="fas fa-paper-plane"></i> Pay Now</button>
+              <button type="submit" disabled={payingBill} className="btn-gold w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed">
+                <i className="fas fa-paper-plane"></i> {payingBill ? 'Paying…' : 'Pay Now'}
+              </button>
             </div>
           </form>
           <div className="mt-4 pt-4 border-t border-brand-border">
             <h4 className="font-bold text-brand-dark text-sm mb-2">Add New Bill</h4>
-            <form onSubmit={handleAddBill} className="space-y-3">
+            <form onSubmit={onAddBillSubmit} className="space-y-3">
               <div className="form-group">
                 <label>Bill Name</label>
                 <input type="text" name="name" placeholder="e.g., Internet" required />
@@ -189,7 +152,9 @@ const ClientBills = () => {
                   <option value="cancelled">Cancelled</option>
                 </select>
               </div>
-              <button type="submit" className="btn-primary w-full justify-center"><i className="fas fa-plus"></i> Add Bill</button>
+              <button type="submit" disabled={addingBill} className="btn-primary w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed">
+                <i className="fas fa-plus"></i> {addingBill ? 'Adding…' : 'Add Bill'}
+              </button>
             </form>
           </div>
         </div>

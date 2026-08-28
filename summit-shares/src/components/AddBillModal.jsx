@@ -1,19 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { addBill } from '../api';
 
+const EMPTY_FORM = {
+  payeeId: '',
+  name: '',
+  description: '',
+  amount: '',
+  dueDate: '',
+  frequency: 'one-time',
+  status: 'upcoming',
+};
+
 const AddBillModal = ({ isOpen, onClose, onSuccess, payees }) => {
-  const [formData, setFormData] = useState({
-    payeeId: '',
-    name: '',
-    description: '',
-    amount: '',
-    dueDate: '',
-    frequency: 'one-time',
-    status: 'upcoming',
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Modal stays mounted across opens (Modal only hides its output when closed),
+  // so reset stale data from the last time it was open each time it reopens.
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(EMPTY_FORM);
+      setError('');
+    }
+  }, [isOpen]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

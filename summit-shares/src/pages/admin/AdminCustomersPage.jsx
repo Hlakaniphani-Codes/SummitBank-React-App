@@ -14,6 +14,7 @@ import {
   rejectApplication,
   reviewApplication,
   sendCustomerEmail,
+  sendCustomerNotification,
   getApplicationDetails,
   toggleLoginEnabled,
   updateCreditScore,
@@ -33,6 +34,8 @@ const AdminCustomersPage = () => {
   const [toast, setToast] = useState('');
   const [emailModal, setEmailModal] = useState({ open: false, customerId: null });
   const [emailForm, setEmailForm] = useState({ subject: '', message: '' });
+  const [notifyModal, setNotifyModal] = useState({ open: false, customerId: null });
+  const [notifyForm, setNotifyForm] = useState({ title: '', description: '' });
   const [reviewModal, setReviewModal] = useState({ open: false, appId: null, action: '' });
   const [reviewNotes, setReviewNotes] = useState('');
   const [confirmModal, setConfirmModal] = useState({ open: false, action: '', customerId: null, customerName: '' });
@@ -134,8 +137,28 @@ const AdminCustomersPage = () => {
     try {
       await sendCustomerEmail(emailModal.customerId, emailForm.subject, emailForm.message);
       showToast('Email sent successfully');
-      setEmailModal({ open: false, customerId: null });
-      setEmailForm({ subject: '', message: '' });
+      closeEmailModal();
+    } catch (err) {
+      showToast(err.message);
+    }
+  };
+
+  const closeEmailModal = () => {
+    setEmailModal({ open: false, customerId: null });
+    setEmailForm({ subject: '', message: '' });
+  };
+
+  const closeNotifyModal = () => {
+    setNotifyModal({ open: false, customerId: null });
+    setNotifyForm({ title: '', description: '' });
+  };
+
+  const handleSendNotification = async (e) => {
+    e.preventDefault();
+    try {
+      await sendCustomerNotification(notifyModal.customerId, notifyForm.title, notifyForm.description);
+      showToast('Notification sent successfully');
+      closeNotifyModal();
     } catch (err) {
       showToast(err.message);
     }
@@ -283,7 +306,7 @@ const AdminCustomersPage = () => {
               <h3>All Customers</h3>
               <span style={{ fontSize: 11, color: '#6b6b6b' }}>{customers.length} customers</span>
             </div>
-            <div className="admin-table-wrap">
+            <div className="admin-table-wrap responsive">
               <table className="admin-table">
                 <thead>
                   <tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
@@ -294,18 +317,18 @@ const AdminCustomersPage = () => {
                   ) : (
                     customers.map((c) => (
                       <tr key={c.id}>
-                        <td style={{ fontWeight: 600 }}>{c.first_name} {c.last_name}</td>
-                        <td>{c.email}</td>
-                        <td>{c.phone || '—'}</td>
-                        <td>
+                        <td data-label="Name" style={{ fontWeight: 600 }}>{c.first_name} {c.last_name}</td>
+                        <td data-label="Email">{c.email}</td>
+                        <td data-label="Phone">{c.phone || '—'}</td>
+                        <td data-label="Status">
                           {getStatusBadge(c.is_active ? 'active' : 'inactive')}
                           <span style={{ fontSize: 9, marginLeft: 6, color: c.login_enabled ? '#2D9B4E' : '#D94352' }}>
                             (Online Banking: {c.login_enabled ? 'ON' : 'OFF'})
                           </span>
                         </td>
-                        <td>{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        <td data-label="Joined">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+                        <td data-label="Actions">
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => handleViewCustomer(c.id)} title="View Details"><i className="fas fa-eye"></i></button>
                             <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openEditModal(c)} title="Edit"><i className="fas fa-pen"></i></button>
                             {c.is_active ? (
@@ -319,6 +342,7 @@ const AdminCustomersPage = () => {
                             )}
                             <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => handleViewActivity(c.id)} title="Activity"><i className="fas fa-history"></i></button>
                             <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => setEmailModal({ open: true, customerId: c.id })} title="Email"><i className="fas fa-envelope"></i></button>
+                            <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => setNotifyModal({ open: true, customerId: c.id })} title="Send Notification"><i className="fas fa-bell"></i></button>
                             <button className="admin-btn admin-btn-info admin-btn-xs" onClick={() => setCreditScoreModal({ open: true, customerId: c.id, currentScore: c.credit_score || '' })} title="Set Credit Score"><i className="fas fa-chart-line"></i></button>
                             <button className="admin-btn admin-btn-primary admin-btn-xs" onClick={() => handleToggleLogin(c.id, c.login_enabled)} title="Toggle Online Banking">
                               {c.login_enabled ? <i className="fas fa-lock"></i> : <i className="fas fa-unlock"></i>}
@@ -349,32 +373,32 @@ const AdminCustomersPage = () => {
                     <div><span style={{ color: '#6b6b6b', fontSize: 10 }}>Online Banking:</span> {selectedCustomer.login_enabled ? 'Enabled' : 'Disabled'}</div>
                   </div>
                   <h4 style={{ fontSize: 12, fontWeight: 600, color: '#C9A84C', marginBottom: 8 }}>Accounts ({selectedCustomer.accounts?.length || 0})</h4>
-                  <div className="admin-table-wrap" style={{ marginBottom: 16 }}>
+                  <div className="admin-table-wrap responsive" style={{ marginBottom: 16 }}>
                     <table className="admin-table">
                       <thead><tr><th>Type</th><th>Number</th><th>Balance</th><th>Status</th></tr></thead>
                       <tbody>
                         {selectedCustomer.accounts?.map(a => (
                           <tr key={a.id}>
-                            <td style={{ textTransform: 'capitalize' }}>{a.account_type}</td>
-                            <td>{a.account_number}</td>
-                            <td>${Number(a.balance).toLocaleString()}</td>
-                            <td>{getStatusBadge(a.status)}</td>
+                            <td data-label="Type" style={{ textTransform: 'capitalize' }}>{a.account_type}</td>
+                            <td data-label="Number">{a.account_number}</td>
+                            <td data-label="Balance">${Number(a.balance).toLocaleString()}</td>
+                            <td data-label="Status">{getStatusBadge(a.status)}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                   <h4 style={{ fontSize: 12, fontWeight: 600, color: '#C9A84C', marginBottom: 8 }}>Cards ({selectedCustomer.cards?.length || 0})</h4>
-                  <div className="admin-table-wrap" style={{ marginBottom: 16 }}>
+                  <div className="admin-table-wrap responsive" style={{ marginBottom: 16 }}>
                     <table className="admin-table">
                       <thead><tr><th>Type</th><th>Last4</th><th>Network</th><th>Status</th></tr></thead>
                       <tbody>
                         {selectedCustomer.cards?.map(c => (
                           <tr key={c.id}>
-                            <td style={{ textTransform: 'capitalize' }}>{c.card_type}</td>
-                            <td>**** {c.last4}</td>
-                            <td style={{ textTransform: 'uppercase' }}>{c.card_network}</td>
-                            <td>{getStatusBadge(c.status)}</td>
+                            <td data-label="Type" style={{ textTransform: 'capitalize' }}>{c.card_type}</td>
+                            <td data-label="Last4">**** {c.last4}</td>
+                            <td data-label="Network" style={{ textTransform: 'uppercase' }}>{c.card_network}</td>
+                            <td data-label="Status">{getStatusBadge(c.status)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -384,6 +408,7 @@ const AdminCustomersPage = () => {
                 <div className="modal-actions">
                   <button className="admin-btn admin-btn-secondary" onClick={() => setSelectedCustomer(null)}>Close</button>
                   <button className="admin-btn admin-btn-primary" onClick={() => { setEmailModal({ open: true, customerId: selectedCustomer.id }); setSelectedCustomer(null); }}>Email Customer</button>
+                  <button className="admin-btn admin-btn-primary" onClick={() => { setNotifyModal({ open: true, customerId: selectedCustomer.id }); setSelectedCustomer(null); }}>Send Notification</button>
                   <button className="admin-btn admin-btn-primary" onClick={() => handleToggleLogin(selectedCustomer.id, selectedCustomer.login_enabled)}>
                     {selectedCustomer.login_enabled ? 'Disable' : 'Enable'} Online Banking
                   </button>
@@ -530,7 +555,7 @@ const AdminCustomersPage = () => {
             </div>
           </div>
 
-          <div className={`admin-modal-overlay ${emailModal.open ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setEmailModal({ open: false, customerId: null }); }}>
+          <div className={`admin-modal-overlay ${emailModal.open ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) closeEmailModal(); }}>
             <div className="admin-modal">
               <div className="modal-title">Send Email to Customer</div>
               <div className="modal-sub">Customer ID: {emailModal.customerId}</div>
@@ -544,8 +569,30 @@ const AdminCustomersPage = () => {
                   <textarea value={emailForm.message} onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })} placeholder="Type your message..." required rows={4}></textarea>
                 </div>
                 <div className="modal-actions">
-                  <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setEmailModal({ open: false, customerId: null })}>Cancel</button>
+                  <button type="button" className="admin-btn admin-btn-secondary" onClick={closeEmailModal}>Cancel</button>
                   <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-paper-plane"></i> Send</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Send Notification Modal */}
+          <div className={`admin-modal-overlay ${notifyModal.open ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) closeNotifyModal(); }}>
+            <div className="admin-modal">
+              <div className="modal-title">Send Notification to Customer</div>
+              <div className="modal-sub">Customer ID: {notifyModal.customerId} — appears in their notifications bell, delivered instantly if they're online</div>
+              <form onSubmit={handleSendNotification}>
+                <div className="admin-form-group">
+                  <label>Title</label>
+                  <input type="text" value={notifyForm.title} onChange={(e) => setNotifyForm({ ...notifyForm, title: e.target.value })} placeholder="Notification title" required />
+                </div>
+                <div className="admin-form-group">
+                  <label>Message</label>
+                  <textarea value={notifyForm.description} onChange={(e) => setNotifyForm({ ...notifyForm, description: e.target.value })} placeholder="Type your message..." required rows={4}></textarea>
+                </div>
+                <div className="modal-actions">
+                  <button type="button" className="admin-btn admin-btn-secondary" onClick={closeNotifyModal}>Cancel</button>
+                  <button type="submit" className="admin-btn admin-btn-primary"><i className="fas fa-bell"></i> Send</button>
                 </div>
               </form>
             </div>
@@ -568,7 +615,7 @@ const AdminCustomersPage = () => {
               <h3>Applications</h3>
               <span style={{ fontSize: 11, color: '#6b6b6b' }}>{applications.length} applications</span>
             </div>
-            <div className="admin-table-wrap">
+            <div className="admin-table-wrap responsive">
               <table className="admin-table">
                 <thead>
                   <tr><th>ID</th><th>Customer</th><th>Type</th><th>Status</th><th>Submitted</th><th>Actions</th></tr>
@@ -579,12 +626,12 @@ const AdminCustomersPage = () => {
                   ) : (
                     applications.map((app) => (
                       <tr key={app.id}>
-                        <td>#{app.id}</td>
-                        <td style={{ fontWeight: 600 }}>{app.first_name} {app.last_name}</td>
-                        <td style={{ textTransform: 'capitalize' }}>{app.application_type}</td>
-                        <td>{getStatusBadge(app.status)}</td>
-                        <td>{app.created_at ? new Date(app.created_at).toLocaleDateString() : '—'}</td>
-                        <td>
+                        <td data-label="ID">#{app.id}</td>
+                        <td data-label="Customer" style={{ fontWeight: 600 }}>{app.first_name} {app.last_name}</td>
+                        <td data-label="Type" style={{ textTransform: 'capitalize' }}>{app.application_type}</td>
+                        <td data-label="Status">{getStatusBadge(app.status)}</td>
+                        <td data-label="Submitted">{app.created_at ? new Date(app.created_at).toLocaleDateString() : '—'}</td>
+                        <td data-label="Actions" style={{ flexWrap: 'wrap' }}>
                           <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => handleViewApplication(app.id)} title="View Details"><i className="fas fa-eye"></i></button>
                           {app.status === 'pending' && (
                             <>

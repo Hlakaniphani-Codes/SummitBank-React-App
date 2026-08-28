@@ -1140,15 +1140,13 @@ const EnrollPage = () => {
       <header className="bg-white/95 backdrop-blur-sm border-b border-brand-border shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3 shrink-0">
-            <svg className="logo-svg" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg className="logo-svg" viewBox="0 0 170 40" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M10 30 L30 10 L50 30 L40 30 L30 18 L20 30 L10 30Z" fill="#C9A84C" />
-              <path d="M70 30 L90 10 L110 30 L100 30 L90 18 L80 30 L70 30Z" fill="#C9A84C" />
               <rect x="32" y="24" width="2" height="6" fill="#C9A84C" />
               <rect x="34" y="26" width="2" height="4" fill="#C9A84C" />
               <rect x="36" y="28" width="2" height="2" fill="#C9A84C" />
               <text x="46" y="26" fontFamily="Montserrat, sans-serif" fontWeight="800" fontSize="20" fill="#0B0B0B" letterSpacing="2">SUMMIT</text>
               <text x="42" y="36" fontFamily="Inter, sans-serif" fontWeight="600" fontSize="7" fill="#5A5A5A" letterSpacing="2">SHARES</text>
-              <circle cx="120" cy="20" r="4" fill="#C9A84C" opacity="0.3" />
             </svg>
           </a>
 

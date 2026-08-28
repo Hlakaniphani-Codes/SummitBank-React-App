@@ -5,6 +5,9 @@ const ClientCards = () => {
   const {
     dashboardData,
     updateCardStatus,
+    handleViewCard,
+    cardDetailModal,
+    setCardDetailModal,
     handleRequestNewCard,
     formatCurrency,
   } = useClient();
@@ -75,30 +78,36 @@ const ClientCards = () => {
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => updateCardStatus(card.id, 'view')}
+                      onClick={() => handleViewCard(card.id)}
                       className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition"
                     >
                       <i className="fas fa-eye text-[10px]"></i> View
                     </button>
-                    <button
-                      onClick={() =>
-                        card.status === 'active'
-                          ? updateCardStatus(card.id, 'block')
-                          : updateCardStatus(card.id, 'activate')
-                      }
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
-                        card.status === 'active'
-                          ? 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
-                          : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300'
-                      }`}
-                    >
-                      <i
-                        className={`fas ${
-                          card.status === 'active' ? 'fa-ban' : 'fa-check'
-                        } text-[10px]`}
-                      ></i>
-                      {card.status === 'active' ? 'Block' : 'Activate'}
-                    </button>
+                    {card.status === 'pending' ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-200 text-amber-600 bg-amber-50">
+                        <i className="fas fa-clock text-[10px]"></i> Awaiting Approval
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          card.status === 'active'
+                            ? updateCardStatus(card.id, 'block')
+                            : updateCardStatus(card.id, 'activate')
+                        }
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
+                          card.status === 'active'
+                            ? 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
+                            : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300'
+                        }`}
+                      >
+                        <i
+                          className={`fas ${
+                            card.status === 'active' ? 'fa-ban' : 'fa-check'
+                          } text-[10px]`}
+                        ></i>
+                        {card.status === 'active' ? 'Block' : 'Activate'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>
@@ -116,6 +125,32 @@ const ClientCards = () => {
           </button>
         </div>
       </div>
+
+      {/* Card Detail Modal */}
+      {cardDetailModal.open && cardDetailModal.card && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setCardDetailModal({ open: false, card: null }); }}
+        >
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-base font-semibold text-gray-900 mb-4">Card Details</h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between"><span className="text-gray-500">Cardholder</span><span className="font-medium text-gray-900">{cardDetailModal.card.cardholder_name}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Card Number</span><span className="font-medium text-gray-900">•••• •••• •••• {cardDetailModal.card.last4}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Type</span><span className="font-medium text-gray-900 capitalize">{cardDetailModal.card.card_type}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Network</span><span className="font-medium text-gray-900 uppercase">{cardDetailModal.card.card_network}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Expires</span><span className="font-medium text-gray-900">{String(cardDetailModal.card.expiry_month).padStart(2, '0')}/{cardDetailModal.card.expiry_year}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Status</span><span className="font-medium text-gray-900 capitalize">{cardDetailModal.card.status}</span></div>
+            </div>
+            <button
+              onClick={() => setCardDetailModal({ open: false, card: null })}
+              className="mt-5 w-full py-2 text-xs font-semibold rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

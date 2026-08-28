@@ -120,7 +120,7 @@ const AdminTransfersPage = () => {
           <h3>Wire Transfers</h3>
           <span style={{ fontSize: 11, color: '#6b6b6b' }}>{transfers.length} transfers</span>
         </div>
-        <div className="admin-table-wrap">
+        <div className="admin-table-wrap responsive">
           <table className="admin-table">
             <thead>
               <tr><th>ID</th><th>Customer</th><th>Beneficiary</th><th>Bank</th><th>Amount</th><th>Currency</th><th>Status</th><th>Actions</th></tr>
@@ -131,15 +131,15 @@ const AdminTransfersPage = () => {
               ) : (
                 transfers.map((t) => (
                   <tr key={t.id}>
-                    <td>#{t.id}</td>
-                    <td style={{ fontWeight: 600 }}>{t.first_name} {t.last_name}</td>
-                    <td>{t.beneficiary_name}</td>
-                    <td>{t.beneficiary_bank}</td>
-                    <td style={{ fontWeight: 700 }}>${Number(t.amount).toLocaleString()}</td>
-                    <td>{t.currency}</td>
-                    <td>{getStatusBadge(t.status)}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    <td data-label="ID">#{t.id}</td>
+                    <td data-label="Customer" style={{ fontWeight: 600 }}>{t.first_name} {t.last_name}</td>
+                    <td data-label="Beneficiary">{t.beneficiary_name}</td>
+                    <td data-label="Bank">{t.beneficiary_bank}</td>
+                    <td data-label="Amount" style={{ fontWeight: 700 }}>${Number(t.amount).toLocaleString()}</td>
+                    <td data-label="Currency">{t.currency}</td>
+                    <td data-label="Status">{getStatusBadge(t.status)}</td>
+                    <td data-label="Actions">
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {t.status === 'pending' && (
                           <>
                             <button className="admin-btn admin-btn-success admin-btn-xs" onClick={() => openConfirm('approve', t)}>Approve</button>

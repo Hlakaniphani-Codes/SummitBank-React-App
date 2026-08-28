@@ -12,9 +12,6 @@ import {
   reopenAccount,
   freezeAccount,
   unfreezeAccount,
-  holdAccount,
-  removeAccountHold,
-  deleteAccount,
   getAccountTransactions,
   getAccountDetails,
   adjustAvailableBalance,
@@ -156,8 +153,7 @@ const AdminAccountsPage = () => {
       else if (action === 'reopen') await reopenAccount(accountId);
       else if (action === 'freeze') await freezeAccount(accountId);
       else if (action === 'unfreeze') await unfreezeAccount(accountId);
-      else if (action === 'delete') await deleteAccount(accountId);
-      showToast(`Account ${action}d successfully`);
+      showToast(`${getActionLabel(action)} — done`);
       setConfirmModal({ open: false, action: '', accountId: null, accountNumber: '' });
       loadAccounts();
     } catch (err) {
@@ -178,12 +174,6 @@ const AdminAccountsPage = () => {
       } else if (type === 'balance') {
         await editAccountBalance(accountId, formData.newBalance);
         showToast('Balance updated successfully');
-      } else if (type === 'hold') {
-        await holdAccount(accountId);
-        showToast('Account placed on hold');
-      } else if (type === 'unhold') {
-        await removeAccountHold(accountId);
-        showToast('Hold removed from account');
       }
       setModal({ open: false, type: '', accountId: null });
       loadAccounts();
@@ -196,6 +186,18 @@ const AdminAccountsPage = () => {
     const cls = status === 'active' ? 'active' : status === 'inactive' ? 'inactive' : status === 'closed' ? 'inactive' : '';
     return <span className={`admin-badge-status ${cls}`}><span className="dot"></span>{status}</span>;
   };
+
+  // Confirm-modal display labels must match what the triggering button said,
+  // since 'activate'/'deactivate' are reused under the hood for Hold/Remove Hold.
+  const ACTION_LABELS = {
+    activate: 'Remove Hold',
+    deactivate: 'Place on Hold',
+    freeze: 'Freeze',
+    unfreeze: 'Unfreeze',
+    close: 'Close',
+    reopen: 'Reopen',
+  };
+  const getActionLabel = (action) => ACTION_LABELS[action] || action;
 
   return (
     <div>
@@ -226,7 +228,7 @@ const AdminAccountsPage = () => {
           <h3>All Accounts</h3>
           <span style={{ fontSize: 11, color: '#6b6b6b' }}>{accounts.length} accounts</span>
         </div>
-        <div className="admin-table-wrap">
+        <div className="admin-table-wrap responsive">
           <table className="admin-table">
             <thead>
               <tr><th>Customer</th><th>Type</th><th>Number</th><th>Balance</th><th>Currency</th><th>Status</th><th>Actions</th></tr>
@@ -237,14 +239,14 @@ const AdminAccountsPage = () => {
               ) : (
                 accounts.map((a) => (
                   <tr key={a.id}>
-                    <td style={{ fontWeight: 600 }}>{a.first_name} {a.last_name}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{a.account_type}</td>
-                    <td>{a.account_number}</td>
-                    <td style={{ fontWeight: 700 }}>${Number(a.balance).toLocaleString()}</td>
-                    <td>{a.currency}</td>
-                    <td>{getStatusBadge(a.status)}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    <td data-label="Customer" style={{ fontWeight: 600 }}>{a.first_name} {a.last_name}</td>
+                    <td data-label="Type" style={{ textTransform: 'capitalize' }}>{a.account_type}</td>
+                    <td data-label="Number">{a.account_number}</td>
+                    <td data-label="Balance" style={{ fontWeight: 700 }}>${Number(a.balance).toLocaleString()}</td>
+                    <td data-label="Currency">{a.currency}</td>
+                    <td data-label="Status">{getStatusBadge(a.status)}</td>
+                    <td data-label="Actions">
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openDetailModal(a.id)} title="View Details"><i className="fas fa-eye"></i></button>
                         <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openEditModal(a)} title="Edit"><i className="fas fa-pen"></i></button>
                         <button className="admin-btn admin-btn-success admin-btn-xs" onClick={() => openModal('credit', a.id)} title="Credit"><i className="fas fa-plus"></i></button>
@@ -252,19 +254,32 @@ const AdminAccountsPage = () => {
                         <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openModal('balance', a.id, a.balance)} title="Edit Balance"><i className="fas fa-dollar-sign"></i></button>
                         <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openBalModal('available', a.id, a.balance)} title="Adjust Available"><i className="fas fa-hand"></i></button>
                         <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openBalModal('ledger', a.id, a.balance)} title="Adjust Ledger"><i className="fas fa-book"></i></button>
-                        <button className="admin-btn admin-btn-success admin-btn-xs" onClick={() => openConfirmModal('activate', a)} title="Activate"><i className="fas fa-check-circle"></i></button>
-                        <button className="admin-btn admin-btn-warning admin-btn-xs" onClick={() => openConfirmModal('deactivate', a)} title="Deactivate"><i className="fas fa-pause-circle"></i></button>
-                        <button className="admin-btn admin-btn-danger admin-btn-xs" onClick={() => openConfirmModal('close', a)} title="Close"><i className="fas fa-times-circle"></i></button>
-                        <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openConfirmModal('reopen', a)} title="Reopen"><i className="fas fa-undo-alt"></i></button>
-                        <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openConfirmModal('freeze', a)} title="Freeze"><i className="fas fa-snowflake"></i></button>
-                        <button className="admin-btn admin-btn-success admin-btn-xs" onClick={() => openConfirmModal('unfreeze', a)} title="Unfreeze"><i className="fas fa-fire"></i></button>
-                        {a.status === 'active' ? (
-                          <button className="admin-btn admin-btn-warning admin-btn-xs" onClick={() => openModal('hold', a.id)} title="Hold"><i className="fas fa-pause"></i></button>
-                        ) : (
-                          <button className="admin-btn admin-btn-success admin-btn-xs" onClick={() => openModal('unhold', a.id)} title="Remove Hold"><i className="fas fa-play"></i></button>
+
+                        {/* Status-transition actions: only the moves that are actually valid from the account's current status */}
+                        {a.status === 'active' && (
+                          <>
+                            <button className="admin-btn admin-btn-warning admin-btn-xs" onClick={() => openConfirmModal('deactivate', a)} title="Place on Hold"><i className="fas fa-pause-circle"></i></button>
+                            <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openConfirmModal('freeze', a)} title="Freeze"><i className="fas fa-snowflake"></i></button>
+                            <button className="admin-btn admin-btn-danger admin-btn-xs" onClick={() => openConfirmModal('close', a)} title="Close"><i className="fas fa-times-circle"></i></button>
+                          </>
                         )}
+                        {a.status === 'inactive' && (
+                          <>
+                            <button className="admin-btn admin-btn-success admin-btn-xs" onClick={() => openConfirmModal('activate', a)} title="Remove Hold"><i className="fas fa-check-circle"></i></button>
+                            <button className="admin-btn admin-btn-danger admin-btn-xs" onClick={() => openConfirmModal('close', a)} title="Close"><i className="fas fa-times-circle"></i></button>
+                          </>
+                        )}
+                        {a.status === 'frozen' && (
+                          <>
+                            <button className="admin-btn admin-btn-success admin-btn-xs" onClick={() => openConfirmModal('unfreeze', a)} title="Unfreeze"><i className="fas fa-fire"></i></button>
+                            <button className="admin-btn admin-btn-danger admin-btn-xs" onClick={() => openConfirmModal('close', a)} title="Close"><i className="fas fa-times-circle"></i></button>
+                          </>
+                        )}
+                        {a.status === 'closed' && (
+                          <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openConfirmModal('reopen', a)} title="Reopen"><i className="fas fa-undo-alt"></i></button>
+                        )}
+
                         <button className="admin-btn admin-btn-secondary admin-btn-xs" onClick={() => openTxModal(a.id)} title="View Transactions"><i className="fas fa-list"></i></button>
-                        <button className="admin-btn admin-btn-danger admin-btn-xs" onClick={() => openConfirmModal('delete', a)} title="Delete"><i className="fas fa-trash"></i></button>
                       </div>
                     </td>
                   </tr>
@@ -328,13 +343,13 @@ const AdminAccountsPage = () => {
       {/* Confirm Action Modal */}
       <div className={`admin-modal-overlay ${confirmModal.open ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setConfirmModal({ open: false, action: '', accountId: null, accountNumber: '' }); }}>
         <div className="admin-modal" style={{ maxWidth: 400 }}>
-          <div className="modal-title" style={{ textTransform: 'capitalize' }}>{confirmModal.action} Account</div>
-          <div className="modal-sub">Are you sure you want to {confirmModal.action} account <strong>{confirmModal.accountNumber}</strong>?</div>
+          <div className="modal-title">{getActionLabel(confirmModal.action)} Account</div>
+          <div className="modal-sub">Are you sure you want to {getActionLabel(confirmModal.action).toLowerCase()} account <strong>{confirmModal.accountNumber}</strong>?</div>
           <div className="modal-actions">
             <button className="admin-btn admin-btn-secondary" onClick={() => setConfirmModal({ open: false, action: '', accountId: null, accountNumber: '' })}>Cancel</button>
-            <button className={`admin-btn ${['close','deactivate','delete','freeze'].includes(confirmModal.action) ? 'admin-btn-danger' : 'admin-btn-success'}`} onClick={handleConfirmAction}>
-              <i className={`fas ${confirmModal.action === 'activate' ? 'fa-check-circle' : confirmModal.action === 'deactivate' ? 'fa-pause-circle' : confirmModal.action === 'close' ? 'fa-times-circle' : confirmModal.action === 'reopen' ? 'fa-undo-alt' : confirmModal.action === 'freeze' ? 'fa-snowflake' : confirmModal.action === 'unfreeze' ? 'fa-fire' : 'fa-trash'}`}></i>
-              {' '}{confirmModal.action.charAt(0).toUpperCase() + confirmModal.action.slice(1)}
+            <button className={`admin-btn ${['close', 'deactivate', 'freeze'].includes(confirmModal.action) ? 'admin-btn-danger' : 'admin-btn-success'}`} onClick={handleConfirmAction}>
+              <i className={`fas ${confirmModal.action === 'activate' ? 'fa-check-circle' : confirmModal.action === 'deactivate' ? 'fa-pause-circle' : confirmModal.action === 'close' ? 'fa-times-circle' : confirmModal.action === 'reopen' ? 'fa-undo-alt' : confirmModal.action === 'freeze' ? 'fa-snowflake' : 'fa-fire'}`}></i>
+              {' '}{getActionLabel(confirmModal.action)}
             </button>
           </div>
         </div>
@@ -382,17 +397,17 @@ const AdminAccountsPage = () => {
             {txModal.transactions.length === 0 ? (
               <p style={{ textAlign: 'center', color: '#6b6b6b', padding: 20 }}>No transactions found</p>
             ) : (
-              <div className="admin-table-wrap">
+              <div className="admin-table-wrap responsive">
                 <table className="admin-table">
                   <thead><tr><th>ID</th><th>Amount</th><th>Type</th><th>Description</th><th>Date</th></tr></thead>
                   <tbody>
                     {txModal.transactions.map((tx, idx) => (
                       <tr key={tx.transaction_id || idx}>
-                        <td style={{ fontSize: 10 }}>{tx.transaction_id?.slice(0, 16) || '—'}</td>
-                        <td style={{ fontWeight: 700, color: tx.amount > 0 ? '#2D9B4E' : '#D94352' }}>${Number(tx.amount).toLocaleString()}</td>
-                        <td style={{ textTransform: 'capitalize' }}>{tx.type}</td>
-                        <td>{tx.description}</td>
-                        <td>{tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString() : '—'}</td>
+                        <td data-label="ID" style={{ fontSize: 10 }}>{tx.transaction_id?.slice(0, 16) || '—'}</td>
+                        <td data-label="Amount" style={{ fontWeight: 700, color: tx.amount > 0 ? '#2D9B4E' : '#D94352' }}>${Number(tx.amount).toLocaleString()}</td>
+                        <td data-label="Type" style={{ textTransform: 'capitalize' }}>{tx.type}</td>
+                        <td data-label="Description">{tx.description}</td>
+                        <td data-label="Date">{tx.transaction_date ? new Date(tx.transaction_date).toLocaleDateString() : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -412,7 +427,7 @@ const AdminAccountsPage = () => {
           <div className="modal-title">Account Details</div>
           <div className="modal-sub">Detailed view of account #{detailModal.accountId}</div>
           {detailModal.details && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="admin-grid-2" style={{ gap: 16 }}>
               <div className="admin-form-group">
                 <label>Account Number</label>
                 <div style={{ background: '#1a1a1a', padding: '8px 12px', borderRadius: 6, color: '#C9A84C', fontWeight: 600 }}>{detailModal.details.account_number}</div>
@@ -498,7 +513,7 @@ const AdminAccountsPage = () => {
       <div className={`admin-modal-overlay ${modal.open ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setModal({ open: false, type: '', accountId: null }); }}>
         <div className="admin-modal">
           <div className="modal-title">
-            {modal.type === 'credit' ? 'Credit Account' : modal.type === 'debit' ? 'Debit Account' : modal.type === 'balance' ? 'Edit Balance' : modal.type === 'hold' ? 'Hold Account' : 'Remove Hold'}
+            {modal.type === 'credit' ? 'Credit Account' : modal.type === 'debit' ? 'Debit Account' : 'Edit Balance'}
           </div>
           <div className="modal-sub">Account #{modal.accountId}</div>
           <form onSubmit={handleSubmit}>
@@ -520,13 +535,11 @@ const AdminAccountsPage = () => {
                 <input type="number" step="0.01" min="0" value={formData.newBalance} onChange={(e) => setFormData({ ...formData, newBalance: e.target.value })} required />
               </div>
             )}
-            {modal.type === 'hold' && <p style={{ fontSize: 12, color: '#E8A838' }}>This will temporarily disable the account.</p>}
-            {modal.type === 'unhold' && <p style={{ fontSize: 12, color: '#2D9B4E' }}>This will re-activate the account.</p>}
             <div className="modal-actions">
               <button type="button" className="admin-btn admin-btn-secondary" onClick={() => setModal({ open: false, type: '', accountId: null })}>Cancel</button>
-              <button type="submit" className={`admin-btn ${modal.type === 'debit' ? 'admin-btn-danger' : modal.type === 'credit' || modal.type === 'unhold' ? 'admin-btn-success' : modal.type === 'hold' ? 'admin-btn-warning' : 'admin-btn-primary'}`}>
-                <i className={`fas ${modal.type === 'credit' ? 'fa-plus' : modal.type === 'debit' ? 'fa-minus' : modal.type === 'balance' ? 'fa-save' : modal.type === 'hold' ? 'fa-pause' : 'fa-play'}`}></i>
-                {modal.type === 'credit' ? ' Credit' : modal.type === 'debit' ? ' Debit' : modal.type === 'balance' ? ' Update' : modal.type === 'hold' ? ' Hold' : ' Remove Hold'}
+              <button type="submit" className={`admin-btn ${modal.type === 'debit' ? 'admin-btn-danger' : modal.type === 'credit' ? 'admin-btn-success' : 'admin-btn-primary'}`}>
+                <i className={`fas ${modal.type === 'credit' ? 'fa-plus' : modal.type === 'debit' ? 'fa-minus' : 'fa-save'}`}></i>
+                {modal.type === 'credit' ? ' Credit' : modal.type === 'debit' ? ' Debit' : ' Update'}
               </button>
             </div>
           </form>

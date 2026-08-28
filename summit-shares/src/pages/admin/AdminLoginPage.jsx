@@ -51,15 +51,13 @@ const AdminLoginPage = () => {
       }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <svg viewBox="0 0 120 40" fill="none" style={{ height: 40, width: 'auto', margin: '0 auto 12px' }}>
+          <svg viewBox="0 0 170 40" fill="none" style={{ height: 40, width: 'auto', margin: '0 auto 12px' }}>
             <path d="M10 30 L30 10 L50 30 L40 30 L30 18 L20 30 L10 30Z" fill="#C9A84C" />
-            <path d="M70 30 L90 10 L110 30 L100 30 L90 18 L80 30 L70 30Z" fill="#C9A84C" />
             <rect x="32" y="24" width="2" height="6" fill="#C9A84C" />
             <rect x="34" y="26" width="2" height="4" fill="#C9A84C" />
             <rect x="36" y="28" width="2" height="2" fill="#C9A84C" />
             <text x="46" y="26" fontFamily="Montserrat, sans-serif" fontWeight="800" fontSize="20" fill="#FFFFFF" letterSpacing="2">SUMMIT</text>
             <text x="46" y="36" fontFamily="Inter, sans-serif" fontWeight="500" fontSize="8" fill="#6b6b6b" letterSpacing="3">SHARES</text>
-            <circle cx="120" cy="20" r="4" fill="#C9A84C" opacity="0.3" />
           </svg>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: 0 }}>Admin Login</h1>
           <p style={{ fontSize: 12, color: '#6b6b6b', marginTop: 4 }}>Sign in to the administration panel</p>

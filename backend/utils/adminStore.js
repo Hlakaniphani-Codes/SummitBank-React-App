@@ -3,6 +3,42 @@ const crypto = require('crypto');
 const { sendProfileApprovedEmail, sendAdminActionEmail } = require('../services/emailService');
 const { emitToUser, emitToAdmins, emitToAll, emitBalanceUpdate, emitNotification, emitTransaction } = require('../services/eventEmitter');
 
+// Admin-triggered notification emails are a side effect of an action that has
+// already succeeded in the DB - a real SMTP failure must never surface as if
+// the underlying action itself failed. Route every call through here so no
+// call site can forget the try/catch (or the {userId, eventType, referenceId}
+// options that keep each email's row in the email_notifications log distinct).
+const safeSendCustomerEmail = async (label, sendFn, ...args) => {
+  try {
+    await sendFn(...args);
+  } catch (emailError) {
+    console.error(`[EMAIL ERROR] Failed to send ${label} email:`, emailError.message);
+  }
+};
+
+// Persists a customer-facing notification (so it's still there under Notifications
+// on their next visit, not just a live toast) and pushes it in real time if they're
+// online. Every admin action that affects a customer's profile or account should
+// go through this instead of emitting a socket event with a throwaway client-side id.
+// Never throws: several callers run this after their own DB change has already
+// committed, so a transient failure here must not make an already-successful
+// admin action come back as an error (risking a confused admin retrying it).
+const notifyCustomer = async (userId, title, description) => {
+  try {
+    const result = await pool.query(
+      `INSERT INTO notifications (user_id, title, description, created_at)
+       VALUES ($1, $2, $3, NOW()) RETURNING id, created_at`,
+      [userId, title, description]
+    );
+    const notification = { id: result.rows[0].id, title, description, is_read: false, created_at: result.rows[0].created_at };
+    emitToUser(userId, 'new-notification', notification);
+    return notification;
+  } catch (error) {
+    console.error('[NOTIFICATION ERROR] Failed to notify customer:', error.message);
+    return null;
+  }
+};
+
 // ============================================================
 // AUDIT LOGGING
 // ============================================================
@@ -154,7 +190,7 @@ const approveApplication = async (applicationId, adminId, notes = '') => {
 
     const approvedCustomer = await getCustomerDetails(user_id);
     if (approvedCustomer) {
-      await sendProfileApprovedEmail(approvedCustomer, {
+      await safeSendCustomerEmail('profile-approved', sendProfileApprovedEmail, approvedCustomer, {
         userId: user_id,
         eventType: 'profile_approved',
         referenceId: applicationId,
@@ -162,13 +198,7 @@ const approveApplication = async (applicationId, adminId, notes = '') => {
     }
 
     // Emit real-time notification to the user
-    emitToUser(user_id, 'new-notification', {
-      id: Date.now(),
-      title: 'Application Approved',
-      description: 'Your application has been approved. You can now log in and start banking.',
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(user_id, 'Application Approved', 'Your application has been approved by Summit Shares. You can now log in and start banking.');
     
     return { userId: user_id, applicationId, status: 'approved' };
   } catch (error) {
@@ -217,13 +247,7 @@ const rejectApplication = async (applicationId, adminId, reason = '') => {
     await client.query('COMMIT');
     
     // Emit real-time notification to the user
-    emitToUser(user_id, 'new-notification', {
-      id: Date.now(),
-      title: 'Application Not Approved',
-      description: 'We regret to inform you that your application was not approved at this time.',
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(user_id, 'Application Not Approved', 'We regret to inform you that your Summit Shares application was not approved at this time.');
     
     return { userId: user_id, applicationId, status: 'rejected' };
   } catch (error) {
@@ -265,9 +289,11 @@ const createAccount = async (userId, accountData, adminId) => {
 
     await client.query('COMMIT');
 
+    await notifyCustomer(userId, 'Account Created', `A new ${accountType} account (#${result.rows[0].account_number}) has been created on your behalf by Summit Shares.`);
+
     const customer = await getCustomerDetails(userId);
     if (customer) {
-      await sendAdminActionEmail(customer, 'Account Created', `A new ${accountType} account has been created on your behalf.`, {
+      await safeSendCustomerEmail('account-created', sendAdminActionEmail, customer, 'Account Created', `A new ${accountType} account has been created on your behalf.`, {
         'Account Number': result.rows[0].account_number,
         'Account Type': result.rows[0].account_type,
         'Currency': result.rows[0].currency,
@@ -333,12 +359,13 @@ const setAccountStatus = async (accountId, status, adminId) => {
   });
 
   // Emit real-time notification to the account owner
+  const accountStatusPhrase = { active: 'activated', inactive: 'placed on hold', closed: 'closed', frozen: 'frozen' }[status] || status;
   const accountOwner = await pool.query('SELECT user_id FROM accounts WHERE id = $1', [accountId]);
   if (accountOwner.rows.length > 0) {
     const ownerId = accountOwner.rows[0].user_id;
     const customer = await getCustomerDetails(ownerId);
     if (customer) {
-      await sendAdminActionEmail(customer, `Account ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your account #${result.rows[0].account_number} has been ${status} by SummitShares.`, {
+      await safeSendCustomerEmail('account-status', sendAdminActionEmail, customer, `Account ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your account #${result.rows[0].account_number} has been ${accountStatusPhrase} by Summit Shares.`, {
         'Account Number': result.rows[0].account_number,
         'Status': status,
         'Updated At': new Date().toISOString(),
@@ -349,59 +376,8 @@ const setAccountStatus = async (accountId, status, adminId) => {
       });
     }
 
-    emitToUser(ownerId, 'new-notification', {
-      id: Date.now(),
-      title: `Account ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-      description: `Your account #${result.rows[0].account_number} has been ${status} by SummitShares.`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(ownerId, `Account ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your account #${result.rows[0].account_number} has been ${accountStatusPhrase} by Summit Shares.`);
     emitToUser(ownerId, 'account-update', { accountId, status, accountNumber: result.rows[0].account_number });
-  }
-
-  return result.rows[0];
-};
-
-const setAccountHold = async (accountId, hold, adminId) => {
-  const status = hold ? 'inactive' : 'active';
-  const result = await pool.query(
-    'UPDATE accounts SET status = $1 WHERE id = $2 RETURNING id, account_number, status',
-    [status, accountId]
-  );
-  if (result.rows.length === 0) throw new Error('Account not found');
-
-  await createAuditLog({
-    adminId,
-    action: hold ? 'hold' : 'unhold',
-    entityType: 'account',
-    entityId: accountId,
-    description: `${hold ? 'Placed' : 'Removed'} hold on account #${accountId}`,
-  });
-
-  // Emit real-time notification to the account owner
-  const accountOwner2 = await pool.query('SELECT user_id FROM accounts WHERE id = $1', [accountId]);
-  if (accountOwner2.rows.length > 0) {
-    const ownerId = accountOwner2.rows[0].user_id;
-    const customer = await getCustomerDetails(ownerId);
-    if (customer) {
-      await sendAdminActionEmail(customer, hold ? 'Account on Hold' : 'Account Hold Removed', hold
-        ? `Your account #${result.rows[0].account_number} has been placed on hold by SummitShares.`
-        : `The hold on account #${result.rows[0].account_number} has been removed.`, {
-          'Account Number': result.rows[0].account_number,
-          'Status': hold ? 'On Hold' : 'Active',
-          'Updated At': new Date().toISOString(),
-        });
-    }
-
-    emitToUser(ownerId, 'new-notification', {
-      id: Date.now(),
-      title: hold ? 'Account on Hold' : 'Hold Removed',
-      description: hold
-        ? `Your account #${result.rows[0].account_number} has been placed on hold by SummitShares.`
-        : `The hold on account #${result.rows[0].account_number} has been removed.`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
   }
 
   return result.rows[0];
@@ -423,7 +399,7 @@ const setAccountBalance = async (accountId, newBalance, adminId) => {
       const txId = `ADJ-${crypto.randomUUID().slice(0, 8)}`;
       await client.query(
         `INSERT INTO transactions (transaction_id, user_id, account_id, amount, description, type, balance_after, status, transaction_date)
-         VALUES ($1, $2, $3, $4, 'Admin balance adjustment', 'credit', $5, 'completed', CURRENT_DATE)`,
+         VALUES ($1, $2, $3, $4, 'Bank Adjustment - Balance Correction', 'credit', $5, 'completed', CURRENT_DATE)`,
         [txId, account.rows[0].user_id, accountId, amount, newBalance]
       );
     }
@@ -443,13 +419,7 @@ const setAccountBalance = async (accountId, newBalance, adminId) => {
     const balAccounts = await pool.query('SELECT id, account_number, account_type, balance, routing_number, apy FROM accounts WHERE user_id = $1', [balUserId]);
     emitToUser(balUserId, 'balance-update', { accounts: balAccounts.rows });
     if (amount !== 0) {
-      emitToUser(balUserId, 'new-notification', {
-        id: Date.now(),
-        title: 'Balance Adjusted',
-        description: `Your account balance has been adjusted from $${oldBalance.toFixed(2)} to $${Number(newBalance).toFixed(2)}.`,
-        is_read: false,
-        created_at: new Date().toISOString()
-      });
+      await notifyCustomer(balUserId, 'Balance Adjusted', `Your account balance has been adjusted from $${oldBalance.toFixed(2)} to $${Number(newBalance).toFixed(2)} by Summit Shares.`);
     }
 
     return { oldBalance, newBalance: Number(newBalance) };
@@ -495,7 +465,7 @@ const issueCard = async (userId, accountId, cardData, adminId) => {
 
   const customer = await getCustomerDetails(userId);
   if (customer) {
-    await sendAdminActionEmail(customer, 'New Card Issued', `A new ${cardType} card ending in ${last4} has been issued to your account.`, {
+    await safeSendCustomerEmail('card-issued', sendAdminActionEmail, customer, 'New Card Issued', `A new ${cardType} card ending in ${last4} has been issued to your account.`, {
       'Card Type': cardType,
       'Card Network': cardNetwork,
       'Last 4': last4,
@@ -509,13 +479,7 @@ const issueCard = async (userId, accountId, cardData, adminId) => {
   }
 
   // Emit real-time notification to the user
-  emitToUser(userId, 'new-notification', {
-    id: Date.now(),
-    title: 'New Card Issued',
-    description: `A new ${cardType} card ending in ${last4} has been issued to your account.`,
-    is_read: false,
-    created_at: new Date().toISOString()
-  });
+  await notifyCustomer(userId, 'New Card Issued', `A new ${cardType} card ending in ${last4} has been issued to your account by Summit Shares.`);
   emitToUser(userId, 'card-update', {
     id: result.rows[0].id,
     last4: result.rows[0].last4,
@@ -546,12 +510,13 @@ const setCardStatus = async (cardId, status, adminId) => {
   });
 
   // Emit real-time notification to the card owner
+  const cardStatusPhrase = { active: 'activated', blocked: 'blocked', expired: 'marked as expired', cancelled: 'cancelled' }[status] || status;
   const cardOwner = await pool.query('SELECT user_id FROM cards WHERE id = $1', [cardId]);
   if (cardOwner.rows.length > 0) {
     const ownerId = cardOwner.rows[0].user_id;
     const customer = await getCustomerDetails(ownerId);
     if (customer) {
-      await sendAdminActionEmail(customer, `Card ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your card ending in ${result.rows[0].last4} has been ${status} by SummitShares.`, {
+      await safeSendCustomerEmail('card-status', sendAdminActionEmail, customer, `Card ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your card ending in ${result.rows[0].last4} has been ${cardStatusPhrase} by Summit Shares.`, {
         'Last 4': result.rows[0].last4,
         'Status': status,
       }, {
@@ -561,13 +526,7 @@ const setCardStatus = async (cardId, status, adminId) => {
       });
     }
 
-    emitToUser(ownerId, 'new-notification', {
-      id: Date.now(),
-      title: `Card ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-      description: `Your card ending in ${result.rows[0].last4} has been ${status} by SummitShares.`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(ownerId, `Card ${status.charAt(0).toUpperCase() + status.slice(1)}`, `Your card ending in ${result.rows[0].last4} has been ${cardStatusPhrase} by Summit Shares.`);
     emitToUser(ownerId, 'card-update', {
       id: cardId,
       last4: result.rows[0].last4,
@@ -658,7 +617,7 @@ const creditAccount = async (accountId, amount, description, adminId) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const account = await client.query('SELECT id, user_id, balance FROM accounts WHERE id = $1 FOR UPDATE', [accountId]);
+    const account = await client.query('SELECT id, user_id, balance, account_number FROM accounts WHERE id = $1 FOR UPDATE', [accountId]);
     if (account.rows.length === 0) throw new Error('Account not found');
     const newBalance = Number(account.rows[0].balance) + Number(amount);
     await client.query('UPDATE accounts SET balance = $1 WHERE id = $2', [newBalance, accountId]);
@@ -666,7 +625,7 @@ const creditAccount = async (accountId, amount, description, adminId) => {
     await client.query(
       `INSERT INTO transactions (transaction_id, user_id, account_id, amount, description, type, balance_after, status, transaction_date)
        VALUES ($1, $2, $3, $4, $5, 'credit', $6, 'completed', CURRENT_DATE)`,
-      [txId, account.rows[0].user_id, accountId, Number(amount), description || 'Admin credit', newBalance]
+      [txId, account.rows[0].user_id, accountId, Number(amount), description || 'Bank Adjustment - Credit', newBalance]
     );
     await client.query('COMMIT');
     
@@ -680,16 +639,23 @@ const creditAccount = async (accountId, amount, description, adminId) => {
       amount: Number(amount),
       type: 'credit',
       status: 'completed',
-      description: description || 'Admin credit',
+      description: description || 'Bank Adjustment - Credit',
       transaction_date: new Date().toISOString().slice(0, 10)
     });
-    emitToUser(account.rows[0].user_id, 'new-notification', {
-      id: Date.now(),
-      title: 'Account Credited',
-      description: `$${Number(amount).toFixed(2)} has been credited to your account by SummitShares.`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(account.rows[0].user_id, 'Account Credited', `$${Number(amount).toFixed(2)} has been credited to your account by Summit Shares.`);
+    const creditCustomer = await getCustomerDetails(account.rows[0].user_id);
+    if (creditCustomer) {
+      await safeSendCustomerEmail('account-credited', sendAdminActionEmail, creditCustomer, 'Account Credited', `$${Number(amount).toFixed(2)} has been credited to your account by Summit Shares.`, {
+        'Account Number': account.rows[0].account_number,
+        'Amount': `$${Number(amount).toFixed(2)}`,
+        'New Balance': `$${Number(newBalance).toFixed(2)}`,
+        'Description': description || 'Bank Adjustment - Credit',
+      }, {
+        userId: account.rows[0].user_id,
+        eventType: 'account_credited',
+        referenceId: accountId,
+      });
+    }
 
     return { transactionId: txId, newBalance };
   } catch (error) {
@@ -704,7 +670,7 @@ const debitAccount = async (accountId, amount, description, adminId) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const account = await client.query('SELECT id, user_id, balance FROM accounts WHERE id = $1 FOR UPDATE', [accountId]);
+    const account = await client.query('SELECT id, user_id, balance, account_number FROM accounts WHERE id = $1 FOR UPDATE', [accountId]);
     if (account.rows.length === 0) throw new Error('Account not found');
     const currentBalance = Number(account.rows[0].balance);
     if (currentBalance < Number(amount)) throw new Error('Insufficient balance');
@@ -714,7 +680,7 @@ const debitAccount = async (accountId, amount, description, adminId) => {
     await client.query(
       `INSERT INTO transactions (transaction_id, user_id, account_id, amount, description, type, balance_after, status, transaction_date)
        VALUES ($1, $2, $3, $4, $5, 'debit', $6, 'completed', CURRENT_DATE)`,
-      [txId, account.rows[0].user_id, accountId, -Number(amount), description || 'Admin debit', newBalance]
+      [txId, account.rows[0].user_id, accountId, -Number(amount), description || 'Bank Adjustment - Debit', newBalance]
     );
     await client.query('COMMIT');
     
@@ -728,16 +694,23 @@ const debitAccount = async (accountId, amount, description, adminId) => {
       amount: -Number(amount),
       type: 'debit',
       status: 'completed',
-      description: description || 'Admin debit',
+      description: description || 'Bank Adjustment - Debit',
       transaction_date: new Date().toISOString().slice(0, 10)
     });
-    emitToUser(account.rows[0].user_id, 'new-notification', {
-      id: Date.now(),
-      title: 'Account Debited',
-      description: `$${Number(amount).toFixed(2)} has been debited from your account by SummitShares.`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(account.rows[0].user_id, 'Account Debited', `$${Number(amount).toFixed(2)} has been debited from your account by Summit Shares.`);
+    const debitCustomer = await getCustomerDetails(account.rows[0].user_id);
+    if (debitCustomer) {
+      await safeSendCustomerEmail('account-debited', sendAdminActionEmail, debitCustomer, 'Account Debited', `$${Number(amount).toFixed(2)} has been debited from your account by Summit Shares.`, {
+        'Account Number': account.rows[0].account_number,
+        'Amount': `$${Number(amount).toFixed(2)}`,
+        'New Balance': `$${Number(newBalance).toFixed(2)}`,
+        'Description': description || 'Bank Adjustment - Debit',
+      }, {
+        userId: account.rows[0].user_id,
+        eventType: 'account_debited',
+        referenceId: accountId,
+      });
+    }
 
     return { transactionId: txId, newBalance };
   } catch (error) {
@@ -746,15 +719,6 @@ const debitAccount = async (accountId, amount, description, adminId) => {
   } finally {
     client.release();
   }
-};
-
-const deleteAccount = async (accountId) => {
-  const result = await pool.query(
-    "UPDATE accounts SET status = 'closed' WHERE id = $1 RETURNING id, account_number, status",
-    [accountId]
-  );
-  if (result.rows.length === 0) throw new Error('Account not found');
-  return result.rows[0];
 };
 
 const getAccountTransactions = async (accountId, filters = {}) => {
@@ -807,7 +771,7 @@ const adjustAvailableBalance = async (accountId, newAvailableBalance, adminId) =
       const txType = amount > 0 ? 'credit' : 'debit';
       await client.query(
         `INSERT INTO transactions (transaction_id, user_id, account_id, amount, description, type, balance_after, status, transaction_date)
-         VALUES ($1, $2, $3, $4, 'Admin available balance adjustment', $5, $6, 'completed', CURRENT_DATE)`,
+         VALUES ($1, $2, $3, $4, 'Bank Adjustment - Available Balance', $5, $6, 'completed', CURRENT_DATE)`,
         [txId, account.rows[0].user_id, accountId, amount, txType, newAvailableBalance]
       );
     }
@@ -835,7 +799,7 @@ const adjustLedgerBalance = async (accountId, newLedgerBalance, adminId) => {
       const txType = amount > 0 ? 'credit' : 'debit';
       await client.query(
         `INSERT INTO transactions (transaction_id, user_id, account_id, amount, description, type, balance_after, status, transaction_date)
-         VALUES ($1, $2, $3, $4, 'Admin ledger balance adjustment', $5, $6, 'completed', CURRENT_DATE)`,
+         VALUES ($1, $2, $3, $4, 'Bank Adjustment - Ledger Balance', $5, $6, 'completed', CURRENT_DATE)`,
         [txId, account.rows[0].user_id, accountId, amount, txType, newLedgerBalance]
       );
     }
@@ -892,13 +856,7 @@ const approveCardRequest = async (cardId, adminId) => {
   const cardOwner = await pool.query('SELECT user_id FROM cards WHERE id = $1', [cardId]);
   if (cardOwner.rows.length > 0) {
     const ownerId = cardOwner.rows[0].user_id;
-    emitToUser(ownerId, 'new-notification', {
-      id: Date.now(),
-      title: 'Card Request Approved',
-      description: `Your ${result.rows[0].card_type} card request has been approved.`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(ownerId, 'Card Request Approved', `Your ${result.rows[0].card_type} card request has been approved by Summit Shares.`);
     emitToUser(ownerId, 'card-update', {
       id: cardId,
       last4: result.rows[0].last4,
@@ -921,13 +879,7 @@ const rejectCardRequest = async (cardId) => {
   const cardOwner = await pool.query('SELECT user_id FROM cards WHERE id = $1', [cardId]);
   if (cardOwner.rows.length > 0) {
     const ownerId = cardOwner.rows[0].user_id;
-    emitToUser(ownerId, 'new-notification', {
-      id: Date.now(),
-      title: 'Card Request Rejected',
-      description: `Your ${result.rows[0].card_type} card request has been rejected.`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(ownerId, 'Card Request Rejected', `Your ${result.rows[0].card_type} card request has been rejected by Summit Shares.`);
     emitToUser(ownerId, 'card-update', {
       id: cardId,
       last4: result.rows[0].last4,
@@ -962,13 +914,7 @@ const replaceCard = async (cardId, adminId) => {
     await client.query('COMMIT');
 
     // Emit real-time notification to the card owner
-    emitToUser(card.user_id, 'new-notification', {
-      id: Date.now(),
-      title: 'Card Replaced',
-      description: `Your card ending in ${card.cardholder_name ? '****' + newCard.rows[0].last4 : '****' + newCard.rows[0].last4} has been replaced.`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(card.user_id, 'Card Replaced', `Your card has been replaced by Summit Shares. Your new card ends in ${newCard.rows[0].last4}.`);
     emitToUser(card.user_id, 'card-update', {
       id: cardId,
       status: 'expired'
@@ -1000,13 +946,7 @@ const cancelCard = async (cardId) => {
   const cardOwner = await pool.query('SELECT user_id FROM cards WHERE id = $1', [cardId]);
   if (cardOwner.rows.length > 0) {
     const ownerId = cardOwner.rows[0].user_id;
-    emitToUser(ownerId, 'new-notification', {
-      id: Date.now(),
-      title: 'Card Cancelled',
-      description: `Your card ending in ${result.rows[0].last4} has been cancelled.`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    });
+    await notifyCustomer(ownerId, 'Card Cancelled', `Your card ending in ${result.rows[0].last4} has been cancelled by Summit Shares.`);
     emitToUser(ownerId, 'card-update', {
       id: cardId,
       last4: result.rows[0].last4,
@@ -1139,22 +1079,37 @@ const notifyCustomerTransferStatus = async (transferId) => {
   return { notified: true, userId: transfer.user_id, email: transfer.email, status: transfer.status };
 };
 
+// Unlike notifyCustomer (a best-effort side effect of some other action), this
+// backs the admin's direct "Send Notification" action - the whole point of that
+// request is to send this notification, so a failure here must surface as one,
+// not be silently swallowed into a false "sent successfully".
 const createPopupNotification = async (userId, title, description) => {
   const result = await pool.query(
-    `INSERT INTO notifications (user_id, title, description)
-     VALUES ($1, $2, $3) RETURNING id`,
+    `INSERT INTO notifications (user_id, title, description, created_at)
+     VALUES ($1, $2, $3, NOW()) RETURNING id, created_at`,
     [userId, title, description]
   );
-  return { id: result.rows[0].id };
+  const notification = { id: result.rows[0].id, title, description, is_read: false, created_at: result.rows[0].created_at };
+  emitToUser(userId, 'new-notification', notification);
+  return notification;
 };
 
 const broadcastNotification = async (title, description, role = 'customer') => {
   const result = await pool.query(
-    `INSERT INTO notifications (user_id, title, description)
-     SELECT id, $1, $2 FROM users WHERE role = $3
-     RETURNING id`,
+    `INSERT INTO notifications (user_id, title, description, created_at)
+     SELECT id, $1, $2, NOW() FROM users WHERE role = $3
+     RETURNING id, user_id, created_at`,
     [title, description, role]
   );
+  result.rows.forEach(row => {
+    emitToUser(row.user_id, 'new-notification', {
+      id: row.id,
+      title,
+      description,
+      is_read: false,
+      created_at: row.created_at,
+    });
+  });
   return { count: result.rowCount };
 };
 
@@ -1334,7 +1289,20 @@ const setCustomerStatus = async (customerId, isActive) => {
     [isActive, customerId]
   );
   if (result.rows.length === 0) throw new Error('Customer not found');
-  return result.rows[0];
+  const customer = result.rows[0];
+
+  const title = isActive ? 'Account Activated' : 'Account Deactivated';
+  const description = isActive
+    ? 'Your Summit Shares profile has been activated. You now have full access to online banking.'
+    : 'Your Summit Shares profile has been deactivated. Please contact support if you believe this is a mistake.';
+  await notifyCustomer(customerId, title, description);
+  await safeSendCustomerEmail('customer-status', sendAdminActionEmail, customer, title, description, {}, {
+    userId: customerId,
+    eventType: `customer_status_${isActive ? 'active' : 'inactive'}`,
+    referenceId: customerId,
+  });
+
+  return customer;
 };
 
 const setCustomerSuspended = async (customerId, suspended) => {
@@ -1343,7 +1311,20 @@ const setCustomerSuspended = async (customerId, suspended) => {
     [!suspended, customerId]
   );
   if (result.rows.length === 0) throw new Error('Customer not found');
-  return result.rows[0];
+  const customer = result.rows[0];
+
+  const title = suspended ? 'Account Suspended' : 'Account Reinstated';
+  const description = suspended
+    ? 'Your Summit Shares account has been suspended. Please contact support for details.'
+    : 'Your Summit Shares account has been reinstated. You now have full access to online banking.';
+  await notifyCustomer(customerId, title, description);
+  await safeSendCustomerEmail('customer-suspend', sendAdminActionEmail, customer, title, description, {}, {
+    userId: customerId,
+    eventType: `customer_suspend_${suspended ? 'suspended' : 'reinstated'}`,
+    referenceId: customerId,
+  });
+
+  return customer;
 };
 
 const deleteCustomer = async (customerId) => {
@@ -1471,9 +1452,7 @@ module.exports = {
   createAccount,
   updateAccount,
   setAccountStatus,
-  setAccountHold,
   setAccountBalance,
-  deleteAccount,
   getAccountTransactions,
   getAccountDetails,
   adjustAvailableBalance,
