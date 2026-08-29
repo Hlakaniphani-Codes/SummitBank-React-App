@@ -27,11 +27,16 @@ const headers = () => ({
 });
 
 const handleResponse = async (res) => {
+  // Never let an empty / non-JSON body (a 502 during deploy, a proxy timeout,
+  // a crash) surface as the cryptic "Unexpected end of JSON input".
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     // Backend error envelope: { success:false, message, code, error:{ code, message, field } }
     const detail = data.error || {};
-    const err = new Error(data.message || detail.message || 'Request failed');
+    const fallback = res.status >= 500
+      ? 'The server is temporarily unavailable. Please try again in a moment.'
+      : 'Request failed';
+    const err = new Error(data.message || detail.message || data.errors?.[0]?.msg || fallback);
     err.code = data.code || detail.code || null;
     err.field = detail.field || null;
     err.status = res.status;
@@ -72,6 +77,20 @@ export const resendLoginOtp = (email) =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
+  }).then(handleResponse);
+
+export const forgotPassword = (email) =>
+  fetch(`${API_BASE}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  }).then(handleResponse);
+
+export const resetPassword = (payload) =>
+  fetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   }).then(handleResponse);
 
 // ---- DASHBOARD ----

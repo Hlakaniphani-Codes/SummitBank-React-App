@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { forgotPassword } from '../api';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -14,17 +15,11 @@ const ForgotPassword = () => {
     setMessage('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.errors?.[0]?.msg || 'Something went wrong');
-      setMessage(data.message);
+      const data = await forgotPassword(email);
+      setMessage(data.message || 'If that email exists, we sent a reset link.');
       setTimeout(() => navigate('/'), 3000); // redirect to home (LandingPage)
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

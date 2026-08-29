@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { resetPassword } from '../api';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -31,17 +32,11 @@ const ResetPassword = () => {
     setMessage('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, newPassword, confirmPassword }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.errors?.[0]?.msg || 'Something went wrong');
+      await resetPassword({ token, newPassword, confirmPassword });
       setMessage('Password reset successfully! Redirecting to login...');
       setTimeout(() => navigate('/'), 3000); // redirect to home
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
