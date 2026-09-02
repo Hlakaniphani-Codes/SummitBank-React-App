@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, createContext, useCont
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useRealtime } from '../../hooks/useRealtime';
 import { isRestrictionError } from '../../utils/accountStatus';
+import AlertDialog from '../../components/AlertDialog';
 
 // ---- Import Modal Components ----
 import AddBeneficiaryModal from '../../components/AddBeneficiaryModal';
@@ -128,8 +129,9 @@ const ClientLayout = () => {
   };
 
   // Central handler for a failed action. If the backend says the failure is an
-  // account restriction, surface the exact reason in a modal; otherwise fall
-  // back to the normal toast. `title` tailors the modal heading per action.
+  // account restriction (frozen / on hold / closed / suspended), surface the
+  // exact reason in a dismiss-to-acknowledge dialog rather than a fleeting
+  // toast. `title` tailors the dialog heading per action ("Transfer Error").
   const reportActionError = (err, { title = 'Action Unavailable' } = {}) => {
     const message = (err && err.message) || 'Something went wrong. Please try again.';
     if (isRestrictionError(err)) {
@@ -236,7 +238,7 @@ const ClientLayout = () => {
       showToast(result.message || 'Card updated');
       await refreshDashboard();
     } catch (err) {
-      reportActionError(err, { title: 'Card Action Unavailable' });
+      reportActionError(err, { title: 'Card Action Failed' });
     }
   };
 
@@ -251,7 +253,7 @@ const ClientLayout = () => {
       showToast('Card requested successfully');
       await refreshDashboard();
     } catch (err) {
-      reportActionError(err, { title: 'Card Request Unavailable' });
+      reportActionError(err, { title: 'Card Request Failed' });
     }
   };
 
@@ -273,7 +275,7 @@ const ClientLayout = () => {
       form.reset();
       await refreshDashboard();
     } catch (err) {
-      reportActionError(err, { title: 'Transfer Unavailable' });
+      reportActionError(err, { title: 'Transfer Error' });
     }
   };
 
@@ -295,7 +297,7 @@ const ClientLayout = () => {
       form.reset();
       await refreshDashboard();
     } catch (err) {
-      reportActionError(err, { title: 'Payment Unavailable' });
+      reportActionError(err, { title: 'Bill Payment Error' });
     }
   };
 
@@ -307,7 +309,7 @@ const ClientLayout = () => {
       showToast('Beneficiary deleted');
       loadBeneficiaries();
     } catch (err) {
-      reportActionError(err, { title: 'Action Unavailable' });
+      reportActionError(err, { title: 'Beneficiary Error' });
     }
   };
 
@@ -599,7 +601,7 @@ const ClientLayout = () => {
       setWireFormOpen(false);
       loadWires();
     } catch (err) {
-      reportActionError(err, { title: 'Wire Transfer Unavailable' });
+      reportActionError(err, { title: 'Wire Transfer Error' });
     }
   };
 
@@ -614,7 +616,7 @@ const ClientLayout = () => {
       setChequeFormOpen(false);
       loadChequeDeposits();
     } catch (err) {
-      reportActionError(err, { title: 'Deposit Unavailable' });
+      reportActionError(err, { title: 'Cheque Deposit Error' });
     }
   };
 
@@ -1181,19 +1183,14 @@ const ClientLayout = () => {
           <button className="close-toast" onClick={hideToast}><i className="fas fa-times"></i></button>
         </div>
 
-        {/* ---- ACCOUNT RESTRICTION MODAL ---- */}
-        <div className={`modal-overlay ${restrictionModal ? 'active' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setRestrictionModal(null); }}>
-          <div className="modal-box">
-            <div className="modal-title">
-              <i className="fas fa-triangle-exclamation" style={{ color: '#D94352', marginRight: 8 }}></i>
-              {restrictionModal?.title || 'Action Unavailable'}
-            </div>
-            <div className="modal-sub">{restrictionModal?.message}</div>
-            <div className="modal-actions">
-              <button className="btn-gold" onClick={() => setRestrictionModal(null)}>Got it</button>
-            </div>
-          </div>
-        </div>
+        {/* ---- ACCOUNT RESTRICTION DIALOG ---- */}
+        <AlertDialog
+          open={!!restrictionModal}
+          variant="error"
+          title={restrictionModal?.title || 'Action Unavailable'}
+          message={restrictionModal?.message}
+          onClose={() => setRestrictionModal(null)}
+        />
 
         {/* ---- SIGN OUT MODAL ---- */}
         <div className={`modal-overlay ${signOutModalOpen ? 'active' : ''}`}>

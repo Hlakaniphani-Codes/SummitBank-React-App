@@ -28,10 +28,13 @@ const ClientTransfer = () => {
             <div className="space-y-4">
               <div className="form-group">
                 <label>From Account</label>
+                {/* Restricted accounts stay selectable on purpose - the backend
+                    rejects the transfer and ClientLayout pops the "Transfer
+                    Error" dialog with the real reason. */}
                 <select name="fromAccount" required onChange={(e) => setSelectedFromAccount(e.target.value)}>
                   <option value="">Select account...</option>
                   {dashboardData?.accounts?.map(acc => (
-                    <option key={acc.id} value={acc.id} disabled={isRestrictedStatus(acc.status)}>
+                    <option key={acc.id} value={acc.id}>
                       {acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number}) - {formatCurrency(acc.balance)}
                       {isRestrictedStatus(acc.status) ? ` — ${accountStatusLabel(acc.status)}` : ''}
                     </option>
@@ -43,7 +46,7 @@ const ClientTransfer = () => {
                 <select name="toAccount" required>
                   <option value="">Select account...</option>
                   {dashboardData?.accounts?.filter(acc => String(acc.id) !== String(selectedFromAccount)).map(acc => (
-                    <option key={acc.id} value={acc.id} disabled={isRestrictedStatus(acc.status)}>
+                    <option key={acc.id} value={acc.id}>
                       {acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number})
                       {isRestrictedStatus(acc.status) ? ` — ${accountStatusLabel(acc.status)}` : ''}
                     </option>
