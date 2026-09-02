@@ -1,17 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { login } from '../api';
-import AlertDialog from '../components/AlertDialog';
-
-// Login failures the customer must read and acknowledge (account on hold /
-// frozen, application still under review, online banking not enabled) - shown
-// in a dialog, not a toast that vanishes before they've finished reading it.
-const LOGIN_BLOCK_TITLES = {
-  ACCOUNT_RESTRICTED: 'Account on Hold',
-  LOGIN_NOT_ENABLED: 'Access Not Enabled',
-  ACCOUNT_PENDING: 'Application Under Review',
-  ACCOUNT_REJECTED: 'Application Not Approved',
-};
 
 // ----- useToast hook -----
 function useToast() {
@@ -78,7 +67,6 @@ export default function LandingPage() {
   });
   const [applying, setApplying] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [loginAlert, setLoginAlert] = useState(null); // { title, message } | null
 
   const openApplyModal = (product) => {
     setApplyProduct(product || '');
@@ -170,13 +158,7 @@ export default function LandingPage() {
         window.location.href = '/dashboard';
       }
     } catch (err) {
-      const blockTitle = LOGIN_BLOCK_TITLES[err?.code];
-      if (blockTitle) {
-        // Account-status stop - keep it on screen until acknowledged.
-        setLoginAlert({ title: blockTitle, message: err.message });
-      } else {
-        showToast(err.message || 'Login error. Check backend connection.');
-      }
+      showToast(err.message || 'Login error. Check backend connection.');
     } finally {
       // Always clear the loading flag, not just on error - window.location.href
       // normally unmounts this page, but if that redirect is ever short-circuited
@@ -1520,15 +1502,6 @@ export default function LandingPage() {
 
       {/* ===== TOAST ===== */}
       {toastNode}
-
-      {/* ===== ACCOUNT-STATUS LOGIN DIALOG ===== */}
-      <AlertDialog
-        open={!!loginAlert}
-        variant="error"
-        title={loginAlert?.title}
-        message={loginAlert?.message}
-        onClose={() => setLoginAlert(null)}
-      />
     </>
   );
 }

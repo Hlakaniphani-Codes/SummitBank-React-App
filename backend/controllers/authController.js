@@ -137,38 +137,26 @@ exports.login = async (req, res) => {
 
     const user = rows[0];
 
-    // --- Approval / account-status checks ---
-    // Each carries a machine `code` so the sign-in page can show these in an
-    // acknowledge-to-dismiss dialog instead of a toast that disappears.
+    // --- Approval status checks ---
     if (user.status === 'pending') {
       return res.status(403).json({
         success: false,
-        code: 'ACCOUNT_PENDING',
         message: 'Your application is still pending administrator review. You will receive an email once your account is approved.'
       });
     }
     if (user.status === 'rejected') {
       return res.status(403).json({
         success: false,
-        code: 'ACCOUNT_REJECTED',
-        message: 'Your application was not approved. Please contact Customer Support for more information.'
+        message: 'Your application was not approved. Please contact support for more information.'
       });
     }
 
     if (!user.is_active) {
-      return res.status(403).json({
-        success: false,
-        code: 'ACCOUNT_RESTRICTED',
-        message: 'Your account is currently on hold. To resolve this issue, please visit your nearest branch or contact Customer Support for assistance.'
-      });
+      return res.status(403).json({ success: false, message: 'Account is deactivated. Please contact support.' });
     }
 
     if (!user.login_enabled) {
-      return res.status(403).json({
-        success: false,
-        code: 'LOGIN_NOT_ENABLED',
-        message: 'Online banking access has not been enabled for your account yet. Please contact Customer Support for assistance.'
-      });
+      return res.status(403).json({ success: false, message: 'Online banking access has not been enabled yet. Please contact support.' });
     }
 
     // Verify password
