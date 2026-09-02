@@ -1,5 +1,7 @@
 const { getTransactions, transferMoney } = require('../utils/postgresStore');
 const { sendError } = require('../utils/apiError');
+const { isRestrictionCode } = require('../utils/accountStatus');
+const { sendTransactionDeclinedEmail } = require('../services/emailService');
 
 exports.getTransactions = async (req, res) => {
   const userId = req.userId;
@@ -22,6 +24,16 @@ exports.transfer = async (req, res) => {
     const result = await transferMoney(userId, { fromAccountId, toAccountId, amount, description, date });
     return res.json({ success: true, message: 'Transfer successful', transactionId: result.transactionId });
   } catch (error) {
+    // A restriction (frozen / on hold / closed / suspended) stopped the
+    // transfer - let the customer know by email too, not just the on-screen
+    // dialog. Fire-and-forget so a slow mail server never delays the response.
+    if (isRestrictionCode(error && error.code)) {
+      sendTransactionDeclinedEmail(userId, {
+        operation: 'Transfer',
+        amount,
+        reason: error.message,
+      }).catch((mailErr) => console.error('[EMAIL ERROR] transfer declined notice:', mailErr.message));
+    }
     return sendError(res, error, { logLabel: 'Transfer error', fallbackMessage: 'Failed to process transfer' });
   }
 };

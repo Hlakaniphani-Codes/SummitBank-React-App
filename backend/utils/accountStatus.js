@@ -84,6 +84,22 @@ class RestrictionError extends Error {
 // "is currently frozen" / "is currently on hold" / "has been closed"
 const statusPhrase = (label) => (label === 'closed' ? 'has been closed' : `is currently ${label}`);
 
+// Appended to a customer-facing restriction message so every one ends with a
+// clear next step.
+const CONTACT_SUPPORT = 'Please contact Customer Support or visit your nearest branch for assistance.';
+
+// The subset of ERROR_CODES that mean "an account restriction stopped this" (as
+// opposed to insufficient funds / same-account). Controllers use this to decide
+// whether to email the customer a "declined" notice.
+const RESTRICTION_CODES = new Set([
+  ERROR_CODES.SENDER_ACCOUNT_RESTRICTED,
+  ERROR_CODES.DESTINATION_ACCOUNT_RESTRICTED,
+  ERROR_CODES.SENDER_ACCOUNT_SUSPENDED,
+  ERROR_CODES.DESTINATION_ACCOUNT_SUSPENDED,
+  ERROR_CODES.ACCOUNT_RESTRICTED,
+]);
+const isRestrictionCode = (code) => typeof code === 'string' && RESTRICTION_CODES.has(code);
+
 // ------------------------------------------------------------
 // Core guard: can this account take part in this operation?
 // Runs inside the caller's transaction (pass the pg client) so the check and
@@ -98,7 +114,7 @@ const statusPhrase = (label) => (label === 'closed' ? 'has been closed' : `is cu
 // Throws RestrictionError; on success returns the locked account row
 // { id, status, balance, user_id, account_number, owner_active }.
 // ------------------------------------------------------------
-async function assertAccountUsable(client, accountId, { role = 'sender', ownerId = null } = {}) {
+async function assertAccountUsable(client, accountId, { role = 'sender', ownerId = null, operation = 'transaction' } = {}) {
   const isDestination = role === 'destination';
   const field = isDestination ? 'destination_account' : 'source_account';
   const which = isDestination ? 'destination' : 'source';
@@ -134,8 +150,8 @@ async function assertAccountUsable(client, accountId, { role = 'sender', ownerId
     throw new RestrictionError(
       isDestination ? ERROR_CODES.DESTINATION_ACCOUNT_SUSPENDED : ERROR_CODES.SENDER_ACCOUNT_SUSPENDED,
       isDestination
-        ? 'This transfer cannot be completed because the destination account is currently restricted.'
-        : 'You cannot complete this transaction because your account is currently restricted.',
+        ? `This ${operation} could not be completed because the recipient's account is currently unable to receive funds.`
+        : `This ${operation} could not be completed because your account access is currently restricted. ${CONTACT_SUPPORT}`,
       { field }
     );
   }
@@ -147,8 +163,8 @@ async function assertAccountUsable(client, accountId, { role = 'sender', ownerId
     throw new RestrictionError(
       isDestination ? ERROR_CODES.DESTINATION_ACCOUNT_RESTRICTED : ERROR_CODES.SENDER_ACCOUNT_RESTRICTED,
       isDestination
-        ? `This transfer cannot be completed because the destination account ${statusPhrase(label)}.`
-        : `This transaction cannot be completed because your account ${statusPhrase(label)}.`,
+        ? `This ${operation} could not be completed because the recipient's account ${statusPhrase(label)}.`
+        : `This ${operation} could not be completed because your account ${statusPhrase(label)}. ${CONTACT_SUPPORT}`,
       { field }
     );
   }
@@ -157,9 +173,11 @@ async function assertAccountUsable(client, accountId, { role = 'sender', ownerId
 }
 
 // Lightweight guard for non-money actions that still must be blocked for a
-// suspended/deactivated customer (adding or removing beneficiaries / payees).
-// Uses the pool by default; pass a client to run inside a transaction.
-async function assertOwnerActive(userId, db = pool) {
+// suspended/deactivated customer (adding or removing beneficiaries / payees,
+// managing cards). Uses the pool by default; pass `{ db: client }` to run
+// inside a transaction. `operation` is dropped into the customer-facing
+// message ("...so adding a beneficiary is unavailable").
+async function assertOwnerActive(userId, { db = pool, operation = 'this request' } = {}) {
   const { rows } = await db.query('SELECT is_active FROM users WHERE id = $1', [userId]);
   if (rows.length === 0) {
     throw new RestrictionError(ERROR_CODES.ACCOUNT_NOT_FOUND, 'Your account could not be found.', {
@@ -169,7 +187,7 @@ async function assertOwnerActive(userId, db = pool) {
   if (!rows[0].is_active) {
     throw new RestrictionError(
       ERROR_CODES.ACCOUNT_RESTRICTED,
-      'Your account is currently restricted. This action is unavailable until the restriction is removed.',
+      `Your account access is currently restricted, so ${operation} is unavailable. ${CONTACT_SUPPORT}`,
       { field: 'account' }
     );
   }
@@ -180,6 +198,8 @@ module.exports = {
   ACCOUNT_STATUS_ACTION,
   ACCOUNT_CAPABILITIES,
   ERROR_CODES,
+  RESTRICTION_CODES,
+  isRestrictionCode,
   HTTP_STATUS_BY_CODE,
   RestrictionError,
   assertAccountUsable,

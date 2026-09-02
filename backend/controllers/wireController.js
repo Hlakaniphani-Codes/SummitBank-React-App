@@ -4,6 +4,8 @@ const {
   getWireTransferDetails,
 } = require('../utils/postgresStore');
 const { sendError } = require('../utils/apiError');
+const { isRestrictionCode } = require('../utils/accountStatus');
+const { sendTransactionDeclinedEmail } = require('../services/emailService');
 
 exports.createWire = async (req, res) => {
   const userId = req.userId;
@@ -20,6 +22,16 @@ exports.createWire = async (req, res) => {
     const result = await createWireTransfer(userId, payload);
     return res.status(201).json({ success: true, wire: result, message: 'Wire transfer initiated. Pending review.' });
   } catch (error) {
+    // Restriction decline -> email the customer as well as showing the dialog.
+    if (isRestrictionCode(error && error.code)) {
+      sendTransactionDeclinedEmail(userId, {
+        operation: 'Wire transfer',
+        amount: payload.amount,
+        currency: payload.currency,
+        beneficiary: payload.beneficiaryName,
+        reason: error.message,
+      }).catch((mailErr) => console.error('[EMAIL ERROR] wire declined notice:', mailErr.message));
+    }
     return sendError(res, error, { logLabel: 'Create wire error', fallbackMessage: 'Failed to create wire transfer' });
   }
 };

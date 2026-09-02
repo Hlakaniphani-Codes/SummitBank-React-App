@@ -262,9 +262,11 @@ const transferMoney = async (userId, payload) => {
     const senderAccount = await assertAccountUsable(client, payload.fromAccountId, {
       role: 'sender',
       ownerId: userId,
+      operation: 'transfer',
     });
     const recipientAccount = await assertAccountUsable(client, payload.toAccountId, {
       role: 'destination',
+      operation: 'transfer',
     });
 
     // Keep the variable shapes the rest of this function already expects.
@@ -397,7 +399,7 @@ const setCardStatus = async (userId, cardId, nextStatus) => {
   if (!allowed.includes(nextStatus)) throw new Error('Invalid card status');
 
   // A suspended / deactivated customer cannot manage cards.
-  await assertOwnerActive(userId);
+  await assertOwnerActive(userId, { operation: 'managing your cards' });
 
   // Single atomic UPDATE guarded by status, so a concurrent admin expire/approve
   // can't be raced and silently overwritten between a check and a later write.
@@ -423,7 +425,7 @@ const requestCard = async (userId, accountId, cardType = 'debit', cardNetwork = 
 
   // A new card is issued against this account - block the request when the
   // customer or the funding account is under a restriction.
-  await assertAccountUsable(pool, accountId, { role: 'sender', ownerId: userId });
+  await assertAccountUsable(pool, accountId, { role: 'sender', ownerId: userId, operation: 'card request' });
 
   const cardholderName = `${userRows.rows[0].first_name} ${userRows.rows[0].last_name}`.trim();
   const last4 = Math.floor(1000 + Math.random() * 9000).toString();
@@ -466,7 +468,7 @@ const listBeneficiaries = async (userId) => {
 };
 
 const addBeneficiary = async (userId, payload) => {
-  await assertOwnerActive(userId);
+  await assertOwnerActive(userId, { operation: 'adding a beneficiary' });
   const { name, bankName, accountIdentifier } = payload;
   const result = await query(
     'INSERT INTO beneficiaries (user_id, name, bank_name, account_identifier) VALUES ($1, $2, $3, $4) RETURNING id',
@@ -476,7 +478,7 @@ const addBeneficiary = async (userId, payload) => {
 };
 
 const removeBeneficiary = async (userId, beneficiaryId) => {
-  await assertOwnerActive(userId);
+  await assertOwnerActive(userId, { operation: 'removing a beneficiary' });
   const result = await query(
     'DELETE FROM beneficiaries WHERE id = $1 AND user_id = $2',
     [beneficiaryId, userId]
@@ -495,7 +497,7 @@ const listPayees = async (userId) => {
 };
 
 const addPayee = async (userId, payload) => {
-  await assertOwnerActive(userId);
+  await assertOwnerActive(userId, { operation: 'adding a payee' });
   const { name, category, accountIdentifier } = payload;
   const result = await query(
     'INSERT INTO payees (user_id, name, category, account_identifier) VALUES ($1, $2, $3, $4) RETURNING id',
@@ -552,6 +554,7 @@ const payBill = async (userId, payload) => {
     const fromAccount = await assertAccountUsable(client, accountId, {
       role: 'sender',
       ownerId: userId,
+      operation: 'bill payment',
     });
 
     const balance = Number(fromAccount.balance);
@@ -780,6 +783,7 @@ const createWireTransfer = async (userId, payload) => {
     const fundingAccount = await assertAccountUsable(client, payload.fromAccountId, {
       role: 'sender',
       ownerId: userId,
+      operation: 'wire transfer',
     });
 
     const amount = Number(payload.amount);
@@ -887,6 +891,7 @@ const createChequeDeposit = async (userId, payload, files) => {
     await assertAccountUsable(client, payload.accountId, {
       role: 'sender',
       ownerId: userId,
+      operation: 'cheque deposit',
     });
 
     const frontImageUrl = files?.front?.[0]?.path || '';

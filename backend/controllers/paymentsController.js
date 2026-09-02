@@ -8,6 +8,8 @@ const {
   generateStatement,
 } = require('../utils/postgresStore');
 const { sendError } = require('../utils/apiError');
+const { isRestrictionCode } = require('../utils/accountStatus');
+const { sendTransactionDeclinedEmail } = require('../services/emailService');
 
 exports.getPayees = async (req, res) => {
   const userId = req.userId;
@@ -83,6 +85,13 @@ exports.payBill = async (req, res) => {
 
     return res.status(201).json({ success: true, payment, message: 'Bill paid' });
   } catch (error) {
+    if (isRestrictionCode(error && error.code)) {
+      sendTransactionDeclinedEmail(userId, {
+        operation: 'Bill payment',
+        amount,
+        reason: error.message,
+      }).catch((mailErr) => console.error('[EMAIL ERROR] bill payment declined notice:', mailErr.message));
+    }
     return sendError(res, error, { logLabel: 'Pay bill error', fallbackMessage: 'Failed to pay bill' });
   }
 };

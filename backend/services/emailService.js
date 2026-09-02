@@ -334,6 +334,66 @@ const sendPasswordResetEmail = async (user = {}, resetUrl) => {
   });
 };
 
+// Sent when a customer-initiated money movement (transfer / wire / bill
+// payment) is declined because an account restriction stopped it. Looks the
+// customer's email up itself so callers only need the userId. Fire-and-forget:
+// callers should not await this or let its failure affect the API response.
+const sendTransactionDeclinedEmail = async (userId, details = {}) => {
+  let user = null;
+  try {
+    const { rows } = await pool.query('SELECT id, first_name, email FROM users WHERE id = $1', [userId]);
+    user = rows[0] || null;
+  } catch (error) {
+    console.error('[EMAIL] declined-notice lookup failed:', error.message);
+  }
+
+  if (!user || !user.email) {
+    console.log('[EMAIL SKIPPED] Declined-transaction notice missing recipient for user', userId);
+    return { messageId: `placeholder-${Date.now()}` };
+  }
+
+  const firstName = user.first_name || 'Customer';
+  const operation = details.operation || 'Transaction'; // e.g. "Wire transfer"
+  const reason = details.reason || 'Your account is currently unable to process this request.';
+  const amountText = details.amount != null && !Number.isNaN(Number(details.amount))
+    ? `${(details.currency || 'USD').toUpperCase()} ${Number(details.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : null;
+
+  const detailRows = [
+    ['Request', operation],
+    amountText ? ['Amount', amountText] : null,
+    details.beneficiary ? ['Recipient', details.beneficiary] : null,
+    ['Date', new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })],
+    ['Status', 'Declined'],
+  ].filter(Boolean);
+
+  const subject = `${operation} declined`;
+  const text = `Dear ${firstName},\n\nWe were unable to process your ${operation.toLowerCase()}${amountText ? ` of ${amountText}` : ''}.\n\nReason: ${reason}\n\n${detailRows.map(([label, value]) => `${label}: ${value}`).join('\n')}\n\nNo funds have left your account. If you believe this restriction is in error, please contact us at ${SUPPORT_EMAIL} or visit your nearest branch.`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; color: #111827;">
+      ${renderEmailHeader('Transaction Declined')}
+      <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; background: #fff;">
+        <p>Dear ${firstName},</p>
+        <p>We were unable to process your <strong>${operation.toLowerCase()}</strong>${amountText ? ` of <strong>${amountText}</strong>` : ''}.</p>
+        <p style="background: #fdecec; border: 1px solid #f5c2c7; border-radius: 8px; padding: 12px 14px; color: #8a2b36;">
+          <strong>Reason:</strong> ${reason}
+        </p>
+        ${renderDetailRows(detailRows)}
+        <p>No funds have left your account. If you believe this restriction is in error, please contact our support team at <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a> or visit your nearest branch.</p>
+        <br/>
+        <p>Best regards,</p>
+        <p><strong>Summit Shares Support</strong></p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail(user.email, subject, html, text, {
+    userId: user.id,
+    eventType: 'transaction_declined',
+    referenceId: details.referenceId || Date.now(),
+  });
+};
+
 const sendAdminActionEmail = async (customer = {}, actionTitle, actionDescription, extraDetails = {}, options = {}) => {
   const recipient = customer.email;
   if (!recipient) {
@@ -455,6 +515,7 @@ module.exports = {
   sendBroadcastEmail,
   sendProfileApprovedEmail,
   sendAdminActionEmail,
+  sendTransactionDeclinedEmail,
   sendOtpEmail,
   sendPasswordResetEmail,
   getEmailNotifications,
