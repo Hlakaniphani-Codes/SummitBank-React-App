@@ -24,42 +24,11 @@ const ClientDashboard = () => {
     return <div className="card-box">Loading your dashboard…</div>;
   }
 
-  const restrictedAccounts = (dashboardData.accounts || []).filter((a) => isRestrictedStatus(a.status));
-
   return (
     <div className="page-section active">
-      {/* Account restriction banner - mirrors the status the admin set and the
-          email the customer received; some transactions are unavailable. */}
-      {restrictedAccounts.length > 0 && (
-        <div
-          className="mb-4"
-          style={{
-            background: 'rgba(217,67,82,0.08)',
-            border: '1px solid rgba(217,67,82,0.3)',
-            borderRadius: 12,
-            padding: '12px 16px',
-            display: 'flex',
-            gap: 12,
-            alignItems: 'flex-start',
-            fontSize: 13,
-            color: '#8a2b36',
-          }}
-        >
-          <i className="fas fa-circle-exclamation" style={{ color: '#D94352', marginTop: 2 }}></i>
-          <div>
-            {restrictedAccounts.length === 1 ? (
-              <>
-                Your {restrictedAccounts[0].account_type === 'savings' ? 'Savings' : 'Checking'} account
-                {' '}(...{(restrictedAccounts[0].account_number || '').replace(/[^0-9]/g, '').slice(-4)}) is currently
-                {' '}<strong>{accountStatusLabel(restrictedAccounts[0].status).toLowerCase()}</strong>.
-              </>
-            ) : (
-              <>{restrictedAccounts.length} of your accounts are currently restricted.</>
-            )}
-            {' '}Some transactions are unavailable until the restriction is removed. Contact support if you believe this is a mistake.
-          </div>
-        </div>
-      )}
+      {/* No dashboard-wide restriction banner - a restricted account is marked
+          with a status chip on its own card, and any blocked money movement is
+          explained in a dialog at the point the customer attempts it. */}
 
       {/* Total Balance Card */}
       <div className="total-balance-card mb-5">

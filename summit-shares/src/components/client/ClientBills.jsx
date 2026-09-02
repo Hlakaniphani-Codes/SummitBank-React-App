@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useClient } from './ClientLayout';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
+import { isRestrictedStatus, accountStatusLabel } from '../../utils/accountStatus';
 import GenerateReceiptModal from '../GenerateReceiptModal';
 
 const ClientBills = () => {
@@ -107,6 +108,7 @@ const ClientBills = () => {
                     dashboardData.accounts.map(acc => (
                       <option key={acc.id} value={acc.id}>
                         {acc.account_type} - {acc.account_number ? `...${acc.account_number.slice(-4)}` : ''} ({formatCurrency(acc.balance)})
+                        {isRestrictedStatus(acc.status) ? ` — ${accountStatusLabel(acc.status)}` : ''}
                       </option>
                     ))
                   ) : (
