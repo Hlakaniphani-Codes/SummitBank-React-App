@@ -75,7 +75,6 @@ const ClientDashboard = () => {
                 <>
                   <i className="fas fa-shield-halved" style={{ color: '#2D9B4E', marginRight: 4 }}></i>
                   Last login {new Date(dashboardData.lastLogin.at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-                  {dashboardData.lastLogin.ipAddress ? ` from ${dashboardData.lastLogin.ipAddress}` : ''}
                   {' · '}
                   <span
                     style={{ color: '#C9A84C', cursor: 'pointer', textDecoration: 'underline' }}
