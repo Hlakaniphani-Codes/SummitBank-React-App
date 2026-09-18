@@ -1,7 +1,6 @@
 import React from 'react';
 import { useClient } from './ClientLayout';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
-import { isRestrictedStatus, accountStatusLabel } from '../../utils/accountStatus';
 
 const ClientTransfer = () => {
   const {
@@ -30,13 +29,14 @@ const ClientTransfer = () => {
                 <label>From Account</label>
                 {/* Restricted accounts stay selectable on purpose - the backend
                     rejects the transfer and ClientLayout pops the "Transfer
-                    Error" dialog with the real reason. */}
+                    Error" dialog with the real reason. The status itself isn't
+                    shown here; that would surface backend account state before
+                    the customer has actually tried to act on it. */}
                 <select name="fromAccount" required onChange={(e) => setSelectedFromAccount(e.target.value)}>
                   <option value="">Select account...</option>
                   {dashboardData?.accounts?.map(acc => (
                     <option key={acc.id} value={acc.id}>
                       {acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number}) - {formatCurrency(acc.balance)}
-                      {isRestrictedStatus(acc.status) ? ` — ${accountStatusLabel(acc.status)}` : ''}
                     </option>
                   ))}
                 </select>
@@ -48,7 +48,6 @@ const ClientTransfer = () => {
                   {dashboardData?.accounts?.filter(acc => String(acc.id) !== String(selectedFromAccount)).map(acc => (
                     <option key={acc.id} value={acc.id}>
                       {acc.account_type === 'savings' ? 'Savings' : 'Checking'} ({acc.account_number})
-                      {isRestrictedStatus(acc.status) ? ` — ${accountStatusLabel(acc.status)}` : ''}
                     </option>
                   ))}
                 </select>

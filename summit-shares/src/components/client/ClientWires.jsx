@@ -1,7 +1,6 @@
 import React from 'react';
 import { useClient } from './ClientLayout';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
-import { isRestrictedStatus, accountStatusLabel } from '../../utils/accountStatus';
 
 const ClientWires = () => {
   const {
@@ -60,14 +59,14 @@ const ClientWires = () => {
                   <label>From Account</label>
                   {/* Restricted accounts stay selectable - the backend rejects
                       the wire and ClientLayout shows the "Wire Transfer Error"
-                      dialog with the reason. */}
+                      dialog with the reason. Status isn't shown here; it should
+                      only surface once the customer actually tries to send. */}
                   <select name="fromAccount" required>
                     {dashboardData?.accounts?.map(acc => (
                       <option key={acc.id} value={acc.id}>
                         {acc.account_type === 'savings' ? 'Savings' : 'Checking'}
                         {acc.account_number ? ` (...${acc.account_number.replace(/[^0-9]/g, '').slice(-4)})` : ''}
                         {' '}- {formatCurrency(acc.balance)}
-                        {isRestrictedStatus(acc.status) ? ` — ${accountStatusLabel(acc.status)}` : ''}
                       </option>
                     ))}
                   </select>

@@ -23,6 +23,11 @@ const generateTransactionId = () => {
   return `TXN-${timestamp}-${random}`;
 };
 
+// Node reports IPv4 connections received over a dual-stack socket as
+// "::ffff:1.2.3.4" - strip that mapping prefix before showing an address to a
+// customer, since the raw notation reads as an internal/technical artifact.
+const normalizeIp = (ip) => (ip ? ip.replace(/^::ffff:/, '') : ip);
+
 const hashPassword = async (password) => bcrypt.hash(password, 10);
 const comparePassword = async (plainPassword, hashedPassword) => bcrypt.compare(plainPassword, hashedPassword);
 
@@ -196,7 +201,7 @@ const getDashboardData = async (userId) => {
     monthlyExpenses: Number(mtdRows.rows[0]?.expenses || 0),
     lastLogin: lastLoginRows.rows[0] ? {
       at: lastLoginRows.rows[0].created_at,
-      ipAddress: lastLoginRows.rows[0].ip_address,
+      ipAddress: normalizeIp(lastLoginRows.rows[0].ip_address),
     } : null,
   };
 };
@@ -656,7 +661,7 @@ const listSessions = async (userId) => {
     'SELECT id, device_name, location, ip_address, is_current, created_at, last_seen_at FROM user_sessions WHERE user_id = $1 ORDER BY is_current DESC, last_seen_at DESC',
     [userId]
   );
-  return result.rows;
+  return result.rows.map((row) => ({ ...row, ip_address: normalizeIp(row.ip_address) }));
 };
 
 const signOutSession = async (userId, sessionId) => {
